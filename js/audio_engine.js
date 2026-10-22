@@ -132,6 +132,10 @@ export class AudioEngine {
       events: {
         onReady: () => {
           this._emit('ready');
+          if (this.pendingVideoId) {
+            this._reproducirConYouTube(this.pendingVideoId, this.pendingTrack);
+            this.pendingVideoId = null;
+          }
         },
         onStateChange: (event) => this._onYouTubeStateChange(event),
         onError: (err) => {
@@ -235,6 +239,8 @@ export class AudioEngine {
 
   _reproducirConYouTube(videoId, track) {
     if (!this.ytPlayer || !this.ytPlayer.loadVideoById) {
+      this.pendingVideoId = videoId;
+      this.pendingTrack = track;
       setTimeout(() => this._reproducirConYouTube(videoId, track), 500);
       return;
     }

@@ -46,7 +46,12 @@ class AudioStreamService:
             'quiet': True,
             'no_warnings': True,
             'extract_flat': False,
-            'cachedir': False
+            'cachedir': False,
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'web', 'ios']
+                }
+            }
         }
 
         url = f"https://www.youtube.com/watch?v={clean_id}"

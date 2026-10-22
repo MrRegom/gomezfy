@@ -1,0 +1,20 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.env
+
+# Scratch & Temporal
+scratch/
+.agents/
+
+# Sistema y Editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

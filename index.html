@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Gomezfy Music</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  
+  <!-- Configuración PWA para iOS iPhone -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Gomezfy">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#121212">
+
+  <!-- Hojas de Estilo -->
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+
+
+  <!-- Barra Superior -->
+  <header class="top-bar">
+    <div class="brand">
+      <span class="brand-icon">🎧</span>
+      <span>Gomezfy</span>
+    </div>
+    <div class="profile-pill" id="btnPerfilSelector" role="button" aria-label="Cambiar perfil">
+      <span id="txtPerfilAvatar">👨</span>
+      <span id="txtPerfilNombre">Papá</span>
+    </div>
+  </header>
+
+  <!-- Contenedor de Vistas -->
+  <main class="views-container">
+    
+    <!-- Vista 1: Buscador -->
+    <section class="view-section active" id="viewSearch">
+      <div class="search-box-wrapper">
+        <input type="search" id="inputSearch" class="search-input" placeholder="Buscar canciones, artistas o bandas..." autocomplete="off">
+      </div>
+      <div class="track-list" id="searchResultsList">
+        <p style="color: var(--text-muted); text-align: center; margin-top: 40px;">
+          Escribe el nombre de una canción para escuchar sin anuncios.
+        </p>
+      </div>
+    </section>
+
+    <!-- Vista 2: Mis Listas y Favoritos -->
+    <section class="view-section" id="viewPlaylists">
+      <div class="playlist-header-actions">
+        <h2>Tus Listas</h2>
+        <button type="button" class="btn-primary" id="btnCrearLista">+ Nueva Lista</button>
+      </div>
+      <div class="playlist-grid" id="playlistGridContainer">
+        <!-- Generado dinámicamente -->
+      </div>
+      <div id="playlistTracksContainer" style="margin-top: 24px; display: none;">
+        <button type="button" class="btn-primary" id="btnVolverListas" style="background: var(--bg-card); color: #fff; margin-bottom: 12px;">← Volver a listas</button>
+        <h3 id="txtPlaylistNombre" style="margin-bottom: 12px;">Nombre Lista</h3>
+        <div class="track-list" id="playlistItemsList"></div>
+      </div>
+    </section>
+
+    <!-- Vista 3: Letras (Karaoke) -->
+    <section class="view-section" id="viewLyrics">
+      <h2 style="margin-bottom: 8px;">Letra de la Canción</h2>
+      <p id="txtLyricsTrackInfo" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px;">Sin reproducción activa</p>
+      <div class="lyrics-container" id="lyricsContentList">
+        <p class="lyrics-line">Reproduce una pista para ver la letra sincronizada.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Mini Player Flotante -->
+  <aside class="mini-player" id="miniPlayer" style="display: none;">
+    <img src="/icons/apple-touch-icon.png" alt="Portada" class="mini-thumb" id="miniThumb">
+    <div class="mini-info" id="miniInfoZone">
+      <div class="mini-title" id="miniTitle">Título</div>
+      <div class="mini-artist" id="miniArtist">Artista</div>
+    </div>
+    <div class="mini-controls">
+      <button type="button" class="icon-btn" id="btnMiniFavorite" title="Favorito">🤍</button>
+      <button type="button" class="mini-play-btn" id="btnMiniPlayPause" title="Reproducir/Pausar">▶</button>
+    </div>
+  </aside>
+
+  <!-- Barra Inferior de Navegación (Tabs) -->
+  <nav class="bottom-nav">
+    <div class="nav-item active" data-view="viewSearch">
+      <span class="nav-icon">🔍</span>
+      <span>Buscar</span>
+    </div>
+    <div class="nav-item" data-view="viewPlaylists">
+      <span class="nav-icon">📚</span>
+      <span>Listas</span>
+    </div>
+    <div class="nav-item" data-view="viewLyrics">
+      <span class="nav-icon">🎤</span>
+      <span>Letras</span>
+    </div>
+  </nav>
+
+  <!-- Modal Reproductor Completo -->
+  <div class="player-modal" id="playerModal">
+    <div class="modal-header">
+      <button type="button" class="icon-btn" id="btnCerrarModal">⌄</button>
+      <span style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Reproduciendo</span>
+      <button type="button" class="icon-btn" id="btnModalAddPlaylist">➕</button>
+    </div>
+    
+    <div class="modal-cover-wrap">
+      <!-- Disco Vinilo / Album Art con animación continua de rotación (Modern Music Player) -->
+      <div class="vinyl-disc-container" id="vinylDisc">
+        <div class="vinyl-record">
+          <div class="vinyl-grooves-overlay"></div>
+          <img src="/icons/icon-512.png" alt="Carátula de álbum" class="vinyl-cover-img" id="modalCover">
+          <div class="vinyl-center-spindle">
+            <div class="vinyl-spindle-hole"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Contenedor oculto para YouTube Iframe Fallback -->
+      <div id="yt-player-container" style="display: none;"></div>
+    </div>
+
+    <div class="modal-meta">
+      <div>
+        <div class="modal-title" id="modalTitle">Canción</div>
+        <div class="modal-artist" id="modalArtist">Artista</div>
+      </div>
+      <button type="button" class="icon-btn" id="btnModalFavorite" style="font-size: 1.5rem;">🤍</button>
+    </div>
+
+    <div class="modal-scrubber">
+      <input type="range" class="seek-bar" id="modalSeekSlider" min="0" max="100" value="0" step="0.1">
+      <div class="time-labels">
+        <span id="lblCurrentTime">0:00</span>
+        <span id="lblTotalTime">0:00</span>
+      </div>
+    </div>
+
+    <div class="modal-controls">
+      <button type="button" class="icon-btn" id="btnModalShuffle">🔀</button>
+      <button type="button" class="icon-btn" id="btnModalPrev" style="font-size: 1.6rem;">⏮</button>
+      <button type="button" class="play-large-btn" id="btnModalPlayPause">▶</button>
+      <button type="button" class="icon-btn" id="btnModalNext" style="font-size: 1.6rem;">⏭</button>
+      <button type="button" class="icon-btn" id="btnModalRepeat">🔁</button>
+    </div>
+
+    <div class="modal-secondary-actions">
+      <button type="button" class="icon-btn" id="btnIrALetras" style="display: flex; align-items: center; gap: 6px; font-size: 0.9rem;">
+        <span>🎤</span> Ver Letra
+      </button>
+    </div>
+  </div>
+
+  <!-- Diálogo: Selector de Perfiles (Papá / Hijo) -->
+  <div class="dialog-backdrop" id="dialogPerfiles">
+    <div class="dialog-box">
+      <h3>Seleccionar Perfil</h3>
+      <div class="dialog-list" id="listaPerfilesDialog"></div>
+      <button type="button" class="btn-primary" id="btnCrearNuevoPerfil" style="width: 100%; margin-bottom: 8px;">+ Agregar Perfil</button>
+      <button type="button" class="btn-primary" id="btnCerrarDialogPerfiles" style="width: 100%; background: var(--bg-card); color: #fff;">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- Diálogo: Agregar a Lista de Reproducción -->
+  <div class="dialog-backdrop" id="dialogAgregarALista">
+    <div class="dialog-box">
+      <h3>Guardar en Lista</h3>
+      <div class="dialog-list" id="listasParaAgregarDialog"></div>
+      <button type="button" class="btn-primary" id="btnCerrarDialogAgregar" style="width: 100%; background: var(--bg-card); color: #fff;">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Orquestador Principal JS (Módulo ES6 desacoplado) -->
+  <script type="module" src="/js/app_controller.js"></script>
+
+</body>
+</html>

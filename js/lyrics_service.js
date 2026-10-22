@@ -19,7 +19,10 @@ export class LyricsService {
 
     try {
       const url = `/api/lyrics?track=${encodeURIComponent(trackTitle)}&artist=${encodeURIComponent(artist)}`;
-      const res = await fetch(url);
+      let res = await fetch(url);
+      if (!res.ok && res.status === 404) {
+        res = await fetch(`/api/lyrics.py?track=${encodeURIComponent(trackTitle)}&artist=${encodeURIComponent(artist)}`);
+      }
       const data = await res.json();
       this.cache.set(key, data);
       this.currentLines = this._parsearLRC(data.syncedLyrics);

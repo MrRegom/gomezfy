@@ -22,7 +22,7 @@ class LocalDevHandler(SimpleHTTPRequestHandler):
         params = urllib.parse.parse_qs(url_parsed.query)
 
         # 1. Endpoint /api/search
-        if url_parsed.path == '/api/search':
+        if url_parsed.path in ('/api/search', '/api/search.py'):
             query = params.get('q', [''])[0]
             resultados = YouTubeSearchEngine.buscar(query)
             respuesta = json.dumps({"status": "success", "results": resultados}, ensure_ascii=False)
@@ -35,7 +35,7 @@ class LocalDevHandler(SimpleHTTPRequestHandler):
             return
 
         # 2. Endpoint /api/lyrics
-        elif url_parsed.path == '/api/lyrics':
+        elif url_parsed.path in ('/api/lyrics', '/api/lyrics.py'):
             track = params.get('track', [''])[0]
             artist = params.get('artist', [''])[0]
             resultado = LyricsService.obtener_letra(track, artist)
@@ -49,7 +49,7 @@ class LocalDevHandler(SimpleHTTPRequestHandler):
             return
 
         # 3. Endpoint /api/stream (Stream de audio nativo m4a/aac para reproducción en pantalla bloqueada)
-        elif url_parsed.path == '/api/stream':
+        elif url_parsed.path in ('/api/stream', '/api/stream.py'):
             video_id = params.get('id', [''])[0]
             resultado = AudioStreamService.obtener_url_audio(video_id)
             if resultado and resultado.get('audioUrl'):

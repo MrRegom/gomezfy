@@ -211,7 +211,10 @@ export class AudioEngine {
 
     try {
       // 1. Intentar resolver stream de audio directo m4a
-      const resp = await fetch(`/api/stream?id=${encodeURIComponent(videoId)}`);
+      let resp = await fetch(`/api/stream?id=${encodeURIComponent(videoId)}`);
+      if (!resp.ok && resp.status === 404) {
+        resp = await fetch(`/api/stream.py?id=${encodeURIComponent(videoId)}`);
+      }
       if (resp.ok) {
         const data = await resp.json();
         if (data.status === 'success' && data.stream?.audioUrl) {

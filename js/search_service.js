@@ -17,7 +17,10 @@ export class SearchService {
     }
 
     try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+      let response = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+      if (!response.ok && response.status === 404) {
+        response = await fetch(`/api/search.py?q=${encodeURIComponent(q)}`);
+      }
       if (!response.ok) throw new Error('Error en búsqueda');
       const data = await response.json();
       const results = data.results || [];

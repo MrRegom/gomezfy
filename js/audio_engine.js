@@ -1,7 +1,8 @@
 /**
- * AudioEngine - Motor de Audio Híbrido Inteligente con Soporte Nativo para iPhone.
- * Responsabilidad Única: Orquestar reproducción instantánea y priorizar stream nativo
- * HTML5 <audio> (m4a/aac) para garantizar sonido ininterrumpido con la pantalla bloqueada en iOS.
+ * AudioEngine - Motor de Audio Nativo HTML5 para iOS (iPhone) y Escritorio.
+ * Responsabilidad Única: Orquestar reproducción en elemento <audio> nativo del DOM
+ * con el patrón Prime & Swap para garantizar audio continuo con pantalla bloqueada
+ * y cambio de aplicaciones en iOS Safari / PWA.
  */
 
 export const PlaybackState = Object.freeze({
@@ -16,14 +17,23 @@ export const PlaybackState = Object.freeze({
 export class AudioEngine {
   constructor(containerId = 'yt-player-container') {
     this.containerId = containerId;
-    this.audioElement = new Audio();
+
+    // Obtener o crear elemento <audio> formalmente anclado al árbol DOM (vital para iOS)
+    let el = document.getElementById('gomezfy-native-audio');
+    if (!el) {
+      el = document.createElement('audio');
+      el.id = 'gomezfy-native-audio';
+      el.style.display = 'none';
+      document.body.appendChild(el);
+    }
+    this.audioElement = el;
     this.audioElement.preload = 'auto';
     this.audioElement.playsInline = true;
     this.audioElement.setAttribute('playsinline', '');
     this.audioElement.setAttribute('webkit-playsinline', '');
 
     this.ytPlayer = null;
-    this.isUsingNativeAudio = false;
+    this.isUsingNativeAudio = true;
     this.isReady = false;
     this.currentTrack = null;
     this.currentState = PlaybackState.IDLE;
@@ -57,15 +67,19 @@ export class AudioEngine {
     });
 
     audio.addEventListener('pause', () => {
-      this.currentState = PlaybackState.PAUSED;
-      this._detenerTickTiempo();
-      this._actualizarMediaSessionState('paused');
-      this._emit('stateChange', this.currentState);
+      if (this.isUsingNativeAudio) {
+        this.currentState = PlaybackState.PAUSED;
+        this._detenerTickTiempo();
+        this._actualizarMediaSessionState('paused');
+        this._emit('stateChange', this.currentState);
+      }
     });
 
     audio.addEventListener('waiting', () => {
-      this.currentState = PlaybackState.BUFFERING;
-      this._emit('stateChange', this.currentState);
+      if (this.isUsingNativeAudio) {
+        this.currentState = PlaybackState.BUFFERING;
+        this._emit('stateChange', this.currentState);
+      }
     });
 
     audio.addEventListener('timeupdate', () => {
@@ -78,18 +92,18 @@ export class AudioEngine {
     });
 
     audio.addEventListener('ended', () => {
-      this.currentState = PlaybackState.ENDED;
-      this._detenerTickTiempo();
-      this._emit('ended');
-      this._emit('stateChange', this.currentState);
+      if (this.isUsingNativeAudio) {
+        this.currentState = PlaybackState.ENDED;
+        this._detenerTickTiempo();
+        this._emit('ended');
+        this._emit('stateChange', this.currentState);
+      }
     });
 
     audio.addEventListener('error', (err) => {
-      console.warn('[AudioEngine Nativo Error, pasando a YouTube Iframe]:', err);
-      if (this.currentTrack) {
-        this.isUsingNativeAudio = false;
-        this._reproducirConYouTube(this.currentTrack.id, this.currentTrack);
-      }
+      // Ignorar eventos de error en estados de datos mínimos iniciales
+      if (!audio.src || audio.src.startsWith('data:')) return;
+      console.warn('[AudioEngine Nativo Error]:', err);
     });
   }
 
@@ -133,7 +147,7 @@ export class AudioEngine {
         onReady: () => {
           this.isReady = true;
           this._emit('ready');
-          if (this.pendingVideoId) {
+          if (this.pendingVideoId && !this.isUsingNativeAudio) {
             this._reproducirConYouTube(this.pendingVideoId, this.pendingTrack);
             this.pendingVideoId = null;
             this.pendingTrack = null;
@@ -202,112 +216,82 @@ export class AudioEngine {
   }
 
   /**
-   * Carga y reproduce de inmediato sin latencia perceptible.
-   * Desbloquea el elemento de audio nativo durante el toque del usuario,
-   * y consulta en paralelo el stream nativo .m4a para garantizar reproducción
-   * ininterrumpida con pantalla bloqueada en iOS (iPhone).
+   * Carga y reproduce audio nativo con el patrón Prime & Swap para iOS.
+   * 1. Prime: Desbloquea el canal de audio de Safari durante el toque del usuario con un silencio ultra-ligero.
+   * 2. Swap: Al obtener el stream .m4a (<800ms), sustituye el src y reproduce en el mismo elemento ya desbloqueado.
+   * 3. Permite reproducción ininterrumpida al bloquear el iPhone o cambiar de app.
    */
   async loadVideo(videoId, track) {
     this.currentTrack = track;
-    this.currentState = PlaybackState.PLAYING;
+    this.currentState = PlaybackState.BUFFERING;
     this._emit('stateChange', this.currentState);
     this._configurarMediaSession(track);
 
-    // Desbloquear / preparar canal de audio nativo en iOS durante el evento del usuario
+    // 1. PRIME (Síncrono en el evento del usuario para satisfacer la política de activación de iOS Safari)
     if (this.audioElement) {
-      this.audioElement.pause();
-      // Silencio mínimo para autorizar audio en segundo plano en Safari iOS
-      if (!this.audioElement.src || this.audioElement.src.startsWith('data:')) {
-        this.audioElement.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
-        this.audioElement.play().catch(() => {});
+      // Audio silencioso mínimo en formato WAV (44 bytes)
+      this.audioElement.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=';
+      this.audioElement.play().catch(() => {});
+    }
+
+    // Detener cualquier reproducción previa de YouTube iframe para evitar interferencia en iOS
+    if (this.ytPlayer && this.ytPlayer.stopVideo) {
+      try { this.ytPlayer.stopVideo(); } catch (_) {}
+    }
+
+    // 2. Obtener stream nativo .m4a desde Vercel o fallback
+    let audioUrl = null;
+    try {
+      const resp = await fetch(`/api/stream?id=${encodeURIComponent(videoId)}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.status === 'success' && data.stream?.audioUrl) {
+          audioUrl = data.stream.audioUrl;
+        }
+      }
+    } catch (err) {
+      console.warn('[Gomezfy API stream]:', err.message);
+    }
+
+    // Fallback de cliente directo con CORS
+    if (!audioUrl) {
+      try {
+        const directResp = await fetch(`https://invidious.f5.si/api/v1/videos/${encodeURIComponent(videoId)}`);
+        if (directResp.ok) {
+          const dData = await directResp.json();
+          const formats = dData.adaptiveFormats || [];
+          const best = formats.find(f => (f.type && f.type.includes('audio/mp4')) || f.container === 'm4a')
+            || formats.find(f => f.type && f.type.includes('audio'));
+          if (best && best.url) {
+            audioUrl = best.url;
+          }
+        }
+      } catch (errFallback) {
+        console.warn('[Gomezfy Direct fallback]:', errFallback.message);
       }
     }
 
-    if (this.ytPlayer && this.ytPlayer.stopVideo) {
-      this.ytPlayer.stopVideo();
+    // 3. SWAP: Reproducir EXCLUSIVAMENTE en el elemento <audio> nativo de iOS
+    if (audioUrl && this.currentTrack && this.currentTrack.id === videoId) {
+      console.info('[Gomezfy Engine]: Reproduciendo audio nativo m4a en segundo plano para iOS.');
+      this.isUsingNativeAudio = true;
+      this.audioElement.src = audioUrl;
+
+      try {
+        await this.audioElement.play();
+        this.currentState = PlaybackState.PLAYING;
+        this._actualizarMediaSessionState('playing');
+        this._emit('stateChange', this.currentState);
+        return;
+      } catch (errPlay) {
+        console.warn('[Audio Nativo Play Error]:', errPlay);
+      }
     }
 
-    // Iniciar de inmediato con YouTube Iframe (cero latencia para el usuario)
+    // 4. Último recurso (solo si no se pudo obtener ningún stream de audio nativo)
+    console.warn('[Gomezfy Engine]: Fallback a YouTube Iframe.');
     this.isUsingNativeAudio = false;
     this._reproducirConYouTube(videoId, track);
-
-    // Elevar la sesión a Audio Nativo (m4a) en segundo plano
-    try {
-      let audioUrl = null;
-
-      // 1. Intentar mediante endpoint backend /api/stream
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4000);
-
-        let resp = await fetch(`/api/stream?id=${encodeURIComponent(videoId)}`, { signal: controller.signal });
-        if (!resp.ok && resp.status === 404) {
-          resp = await fetch(`/api/stream.py?id=${encodeURIComponent(videoId)}`, { signal: controller.signal });
-        }
-        clearTimeout(timeoutId);
-
-        if (resp.ok) {
-          const data = await resp.json();
-          if (data.status === 'success' && data.stream?.audioUrl) {
-            audioUrl = data.stream.audioUrl;
-          }
-        }
-      } catch (errBackend) {
-        console.warn('[AudioEngine Backend Fetch]:', errBackend.message);
-      }
-
-      // 2. Fallback de cliente directo (CORS) para garantizar reproducción en pantalla bloqueada
-      if (!audioUrl) {
-        try {
-          const directResp = await fetch(`https://invidious.f5.si/api/v1/videos/${encodeURIComponent(videoId)}`);
-          if (directResp.ok) {
-            const dData = await directResp.json();
-            const formats = dData.adaptiveFormats || [];
-            const best = formats.find(f => (f.type && f.type.includes('audio/mp4')) || f.container === 'm4a')
-              || formats.find(f => f.type && f.type.includes('audio'));
-            if (best && best.url) {
-              audioUrl = best.url;
-            }
-          }
-        } catch (errDirect) {
-          console.warn('[AudioEngine Direct Fetch]:', errDirect.message);
-        }
-      }
-
-      // 3. Promover a elemento <audio> nativo de iOS si obtuvimos el stream
-      if (audioUrl && this.currentTrack && this.currentTrack.id === videoId) {
-        console.info('[Gomezfy Engine]: Stream m4a nativo activo para reproducción con pantalla bloqueada en iOS.');
-        const currentTime = this.ytPlayer?.getCurrentTime?.() || 0;
-
-        this.isUsingNativeAudio = true;
-        this.audioElement.src = audioUrl;
-
-        if (currentTime > 1) {
-          this.audioElement.addEventListener('loadedmetadata', () => {
-            try {
-              this.audioElement.currentTime = currentTime;
-            } catch (_) {}
-          }, { once: true });
-        }
-
-        try {
-          await this.audioElement.play();
-          // Pausar YouTube Iframe una vez que el audio nativo comenzó a sonar
-          if (this.ytPlayer && this.ytPlayer.pauseVideo) {
-            this.ytPlayer.pauseVideo();
-          }
-          this._actualizarMediaSessionState('playing');
-        } catch (err) {
-          console.warn('[AudioEngine]: Fallback a YouTube player:', err);
-          this.isUsingNativeAudio = false;
-          if (this.ytPlayer && this.ytPlayer.playVideo) {
-            this.ytPlayer.playVideo();
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('[Gomezfy Engine]: Manteniendo reproducción estándar:', e.message);
-    }
   }
 
   _reproducirConYouTube(videoId, track) {
@@ -331,6 +315,7 @@ export class AudioEngine {
   play() {
     this.currentState = PlaybackState.PLAYING;
     this._emit('stateChange', this.currentState);
+    this._actualizarMediaSessionState('playing');
 
     if (this.isUsingNativeAudio && this.audioElement) {
       this.audioElement.play().catch(() => {});
@@ -342,6 +327,7 @@ export class AudioEngine {
   pause() {
     this.currentState = PlaybackState.PAUSED;
     this._emit('stateChange', this.currentState);
+    this._actualizarMediaSessionState('paused');
 
     if (this.isUsingNativeAudio && this.audioElement) {
       this.audioElement.pause();
@@ -386,7 +372,7 @@ export class AudioEngine {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: track.title,
       artist: track.artist || 'Gomezfy',
-      album: 'Gomezfy Sessions',
+      album: 'Gomezfy Music',
       artwork: [
         { src: track.thumbnail, sizes: '96x96', type: 'image/jpeg' },
         { src: track.thumbnail, sizes: '128x128', type: 'image/jpeg' },

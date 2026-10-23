@@ -145,7 +145,9 @@
       <div class="spotify-art-card">
         <img src="/icons/icon-512.png" alt="Carátula" class="spotify-cover-img" id="modalCover">
       </div>
-      <!-- Contenedor activo de YouTube con dimensiones reales oculto con opacidad cero -->
+      <!-- Elemento HTML5 de Audio Nativo DOM para reproducción continua en segundo plano en iOS -->
+      <audio id="gomezfy-native-audio" playsinline webkit-playsinline preload="auto" style="display:none;"></audio>
+      <!-- Contenedor activo de YouTube como respaldo secundario -->
       <div id="yt-player-container" class="yt-hidden-player"></div>
     </div>
 

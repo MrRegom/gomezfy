@@ -233,51 +233,76 @@ export class AudioEngine {
 
     // Elevar la sesión a Audio Nativo (m4a) en segundo plano
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      let audioUrl = null;
 
-      let resp = await fetch(`/api/stream?id=${encodeURIComponent(videoId)}`, { signal: controller.signal });
-      if (!resp.ok && resp.status === 404) {
-        resp = await fetch(`/api/stream.py?id=${encodeURIComponent(videoId)}`, { signal: controller.signal });
+      // 1. Intentar mediante endpoint backend /api/stream
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+        let resp = await fetch(`/api/stream?id=${encodeURIComponent(videoId)}`, { signal: controller.signal });
+        if (!resp.ok && resp.status === 404) {
+          resp = await fetch(`/api/stream.py?id=${encodeURIComponent(videoId)}`, { signal: controller.signal });
+        }
+        clearTimeout(timeoutId);
+
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.status === 'success' && data.stream?.audioUrl) {
+            audioUrl = data.stream.audioUrl;
+          }
+        }
+      } catch (errBackend) {
+        console.warn('[AudioEngine Backend Fetch]:', errBackend.message);
       }
-      clearTimeout(timeoutId);
 
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data.status === 'success' && data.stream?.audioUrl) {
-          // Validar que el usuario no haya cambiado de canción durante la petición
-          if (this.currentTrack && this.currentTrack.id === videoId) {
-            console.info('[Gomezfy Engine]: Stream m4a nativo activo para reproducción con pantalla bloqueada.');
-            const currentTime = this.ytPlayer?.getCurrentTime?.() || 0;
-
-            this.isUsingNativeAudio = true;
-            this.audioElement.src = data.stream.audioUrl;
-            
-            if (currentTime > 1) {
-              this.audioElement.addEventListener('loadedmetadata', () => {
-                try {
-                  this.audioElement.currentTime = currentTime;
-                } catch (_) {}
-              }, { once: true });
-            }
-
-            try {
-              await this.audioElement.play();
-              // Pausar YouTube Iframe una vez que el audio nativo comenzó a sonar
-              if (this.ytPlayer && this.ytPlayer.pauseVideo) {
-                this.ytPlayer.pauseVideo();
-              }
-              this._actualizarMediaSessionState('playing');
-            } catch (err) {
-              console.warn('[AudioEngine]: Fallback a YouTube player:', err);
-              this.isUsingNativeAudio = false;
-              if (this.ytPlayer && this.ytPlayer.playVideo) {
-                this.ytPlayer.playVideo();
-              }
+      // 2. Fallback de cliente directo (CORS) para garantizar reproducción en pantalla bloqueada
+      if (!audioUrl) {
+        try {
+          const directResp = await fetch(`https://invidious.f5.si/api/v1/videos/${encodeURIComponent(videoId)}`);
+          if (directResp.ok) {
+            const dData = await directResp.json();
+            const formats = dData.adaptiveFormats || [];
+            const best = formats.find(f => (f.type && f.type.includes('audio/mp4')) || f.container === 'm4a')
+              || formats.find(f => f.type && f.type.includes('audio'));
+            if (best && best.url) {
+              audioUrl = best.url;
             }
           }
-        } else {
-          console.warn('[Gomezfy Engine stream debug]:', data.debug || data.message);
+        } catch (errDirect) {
+          console.warn('[AudioEngine Direct Fetch]:', errDirect.message);
+        }
+      }
+
+      // 3. Promover a elemento <audio> nativo de iOS si obtuvimos el stream
+      if (audioUrl && this.currentTrack && this.currentTrack.id === videoId) {
+        console.info('[Gomezfy Engine]: Stream m4a nativo activo para reproducción con pantalla bloqueada en iOS.');
+        const currentTime = this.ytPlayer?.getCurrentTime?.() || 0;
+
+        this.isUsingNativeAudio = true;
+        this.audioElement.src = audioUrl;
+
+        if (currentTime > 1) {
+          this.audioElement.addEventListener('loadedmetadata', () => {
+            try {
+              this.audioElement.currentTime = currentTime;
+            } catch (_) {}
+          }, { once: true });
+        }
+
+        try {
+          await this.audioElement.play();
+          // Pausar YouTube Iframe una vez que el audio nativo comenzó a sonar
+          if (this.ytPlayer && this.ytPlayer.pauseVideo) {
+            this.ytPlayer.pauseVideo();
+          }
+          this._actualizarMediaSessionState('playing');
+        } catch (err) {
+          console.warn('[AudioEngine]: Fallback a YouTube player:', err);
+          this.isUsingNativeAudio = false;
+          if (this.ytPlayer && this.ytPlayer.playVideo) {
+            this.ytPlayer.playVideo();
+          }
         }
       }
     } catch (e) {

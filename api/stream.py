@@ -135,8 +135,8 @@ class AudioStreamService:
             'socket_timeout': 10,
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['android'],
-                    'player_skip': ['web', 'mweb', 'web_creator', 'ios']
+                    'player_client': ['visionos', 'android'],
+                    'player_skip': ['web', 'mweb', 'web_creator']
                 }
             }
         }

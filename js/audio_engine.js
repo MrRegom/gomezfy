@@ -234,9 +234,12 @@ export class AudioEngine {
     // Elevar la sesión a Audio Nativo (m4a) en segundo plano
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const resp = await fetch(`/api/stream?id=${encodeURIComponent(videoId)}`, { signal: controller.signal });
+      let resp = await fetch(`/api/stream?id=${encodeURIComponent(videoId)}`, { signal: controller.signal });
+      if (!resp.ok && resp.status === 404) {
+        resp = await fetch(`/api/stream.py?id=${encodeURIComponent(videoId)}`, { signal: controller.signal });
+      }
       clearTimeout(timeoutId);
 
       if (resp.ok) {
@@ -246,15 +249,35 @@ export class AudioEngine {
           if (this.currentTrack && this.currentTrack.id === videoId) {
             console.info('[Gomezfy Engine]: Stream m4a nativo activo para reproducción con pantalla bloqueada.');
             const currentTime = this.ytPlayer?.getCurrentTime?.() || 0;
-            if (this.ytPlayer && this.ytPlayer.pauseVideo) {
-              this.ytPlayer.pauseVideo();
-            }
 
             this.isUsingNativeAudio = true;
             this.audioElement.src = data.stream.audioUrl;
-            this.audioElement.currentTime = currentTime;
-            await this.audioElement.play();
+            
+            if (currentTime > 1) {
+              this.audioElement.addEventListener('loadedmetadata', () => {
+                try {
+                  this.audioElement.currentTime = currentTime;
+                } catch (_) {}
+              }, { once: true });
+            }
+
+            try {
+              await this.audioElement.play();
+              // Pausar YouTube Iframe una vez que el audio nativo comenzó a sonar
+              if (this.ytPlayer && this.ytPlayer.pauseVideo) {
+                this.ytPlayer.pauseVideo();
+              }
+              this._actualizarMediaSessionState('playing');
+            } catch (err) {
+              console.warn('[AudioEngine]: Fallback a YouTube player:', err);
+              this.isUsingNativeAudio = false;
+              if (this.ytPlayer && this.ytPlayer.playVideo) {
+                this.ytPlayer.playVideo();
+              }
+            }
           }
+        } else {
+          console.warn('[Gomezfy Engine stream debug]:', data.debug || data.message);
         }
       }
     } catch (e) {

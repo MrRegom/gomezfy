@@ -63,30 +63,38 @@ SANITIZED_COOKIES = """# Netscape HTTP Cookie File
 
 
 def resolver_ruta_cookies() -> Optional[str]:
-    """Retorna la ruta hacia las cookies de YouTube, escribiéndolas en /tmp si es necesario."""
-    # 1. Variable de entorno
+    """
+    Retorna la ruta hacia las cookies de YouTube en un directorio con permisos de ESCRITURA (/tmp).
+    yt-dlp requiere permisos de escritura en el archivo de cookies para sincronizar sesiones en Vercel.
+    """
+    tmp_path = os.path.join(tempfile.gettempdir(), "vercel_yt_cookies_writable.txt")
+
+    # 1. Variable de entorno personalizada
     env_cookies = os.environ.get("YOUTUBE_COOKIES")
     if env_cookies and env_cookies.strip():
-        tmp_env = os.path.join(tempfile.gettempdir(), "yt_cookies_env.txt")
         try:
-            with open(tmp_env, "w", encoding="utf-8") as f:
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 f.write(env_cookies.strip() + "\n")
-            return tmp_env
+            return tmp_path
         except Exception:
             pass
 
-    # 2. Archivo físico local en api/cookies.txt
+    # 2. Si existe un archivo físico local, copiarlo a /tmp para evitar Read-only file system
     directorio_actual = os.path.dirname(__file__)
     ruta_local = os.path.join(directorio_actual, "cookies.txt")
     if os.path.exists(ruta_local) and os.path.getsize(ruta_local) > 20:
-        return ruta_local
+        try:
+            with open(ruta_local, "r", encoding="utf-8") as src, open(tmp_path, "w", encoding="utf-8") as dst:
+                dst.write(src.read())
+            return tmp_path
+        except Exception:
+            pass
 
-    # 3. Fallback en /tmp (100% compatible con Vercel Serverless)
-    tmp_fallback = os.path.join(tempfile.gettempdir(), "vercel_yt_cookies.txt")
+    # 3. Fallback embebido persistido en /tmp
     try:
-        with open(tmp_fallback, "w", encoding="utf-8") as f:
+        with open(tmp_path, "w", encoding="utf-8") as f:
             f.write(SANITIZED_COOKIES.strip() + "\n")
-        return tmp_fallback
+        return tmp_path
     except Exception:
         return None
 

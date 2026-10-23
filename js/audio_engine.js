@@ -1,7 +1,7 @@
 /**
- * AudioEngine - Motor de Audio Optimizado para Máxima Fluidez y Cero Latencia (Estilo Spotify Mobile).
- * Responsabilidad Única: Orquestar la reproducción instantánea de pistas,
- * mantener activo el hilo de audio en iOS (iPhone) y sincronizar la MediaSession API con la pantalla de bloqueo.
+ * AudioEngine - Motor de Audio Híbrido Inteligente con Soporte Nativo para iPhone.
+ * Responsabilidad Única: Orquestar reproducción instantánea y priorizar stream nativo
+ * HTML5 <audio> (m4a/aac) para garantizar sonido ininterrumpido con la pantalla bloqueada en iOS.
  */
 
 export const PlaybackState = Object.freeze({
@@ -16,7 +16,14 @@ export const PlaybackState = Object.freeze({
 export class AudioEngine {
   constructor(containerId = 'yt-player-container') {
     this.containerId = containerId;
+    this.audioElement = new Audio();
+    this.audioElement.preload = 'auto';
+    this.audioElement.playsInline = true;
+    this.audioElement.setAttribute('playsinline', '');
+    this.audioElement.setAttribute('webkit-playsinline', '');
+
     this.ytPlayer = null;
+    this.isUsingNativeAudio = false;
     this.isReady = false;
     this.currentTrack = null;
     this.currentState = PlaybackState.IDLE;
@@ -24,10 +31,9 @@ export class AudioEngine {
     this.timerInterval = null;
     this.pendingVideoId = null;
     this.pendingTrack = null;
-    this.audioContext = null;
 
+    this._configurarEventosAudioNativo();
     this._cargarScriptYouTube();
-    this._iniciarAudioContextIOS();
   }
 
   on(event, callback) {
@@ -40,40 +46,51 @@ export class AudioEngine {
     }
   }
 
-  /**
-   * Inicia un contexto de audio Web Audio API casi imperceptible (0.0001 gain)
-   * que ancla el hilo de reproducción de Safari iOS para que el sistema reconozca
-   * la sesión de audio activa en segundo plano.
-   */
-  _iniciarAudioContextIOS() {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
+  _configurarEventosAudioNativo() {
+    const audio = this.audioElement;
 
-    const desbloquearAudio = () => {
-      try {
-        if (!this.audioContext) {
-          this.audioContext = new AudioCtx();
-        }
-        if (this.audioContext.state === 'suspended') {
-          this.audioContext.resume();
-        }
-        // Micro oscilador silencioso de anclaje
-        const osc = this.audioContext.createOscillator();
-        const gain = this.audioContext.createGain();
-        gain.gain.value = 0.00001;
-        osc.connect(gain);
-        gain.connect(this.audioContext.destination);
-        osc.start();
-        osc.stop(this.audioContext.currentTime + 0.1);
-      } catch (e) {
-        // Ignorar si el navegador no requiere anclaje manual
+    audio.addEventListener('play', () => {
+      this.currentState = PlaybackState.PLAYING;
+      this._iniciarTickTiempo();
+      this._actualizarMediaSessionState('playing');
+      this._emit('stateChange', this.currentState);
+    });
+
+    audio.addEventListener('pause', () => {
+      this.currentState = PlaybackState.PAUSED;
+      this._detenerTickTiempo();
+      this._actualizarMediaSessionState('paused');
+      this._emit('stateChange', this.currentState);
+    });
+
+    audio.addEventListener('waiting', () => {
+      this.currentState = PlaybackState.BUFFERING;
+      this._emit('stateChange', this.currentState);
+    });
+
+    audio.addEventListener('timeupdate', () => {
+      if (this.isUsingNativeAudio) {
+        const currentTime = audio.currentTime || 0;
+        const duration = audio.duration || 0;
+        this._emit('timeUpdate', { currentTime, duration });
+        this._actualizarPositionState(currentTime, duration);
       }
-      window.removeEventListener('touchstart', desbloquearAudio);
-      window.removeEventListener('click', desbloquearAudio);
-    };
+    });
 
-    window.addEventListener('touchstart', desbloquearAudio, { once: true, passive: true });
-    window.addEventListener('click', desbloquearAudio, { once: true, passive: true });
+    audio.addEventListener('ended', () => {
+      this.currentState = PlaybackState.ENDED;
+      this._detenerTickTiempo();
+      this._emit('ended');
+      this._emit('stateChange', this.currentState);
+    });
+
+    audio.addEventListener('error', (err) => {
+      console.warn('[AudioEngine Nativo Error, pasando a YouTube Iframe]:', err);
+      if (this.currentTrack) {
+        this.isUsingNativeAudio = false;
+        this._reproducirConYouTube(this.currentTrack.id, this.currentTrack);
+      }
+    });
   }
 
   _cargarScriptYouTube() {
@@ -117,7 +134,7 @@ export class AudioEngine {
           this.isReady = true;
           this._emit('ready');
           if (this.pendingVideoId) {
-            this._ejecutarCargaInmediata(this.pendingVideoId, this.pendingTrack);
+            this._reproducirConYouTube(this.pendingVideoId, this.pendingTrack);
             this.pendingVideoId = null;
             this.pendingTrack = null;
           }
@@ -132,6 +149,8 @@ export class AudioEngine {
   }
 
   _onYouTubeStateChange(event) {
+    if (this.isUsingNativeAudio) return;
+
     const YTState = window.YT.PlayerState;
     switch (event.data) {
       case YTState.PLAYING:
@@ -161,7 +180,12 @@ export class AudioEngine {
   _iniciarTickTiempo() {
     this._detenerTickTiempo();
     this.timerInterval = setInterval(() => {
-      if (this.ytPlayer && this.ytPlayer.getCurrentTime) {
+      if (this.isUsingNativeAudio && this.audioElement) {
+        const currentTime = this.audioElement.currentTime || 0;
+        const duration = this.audioElement.duration || 0;
+        this._emit('timeUpdate', { currentTime, duration });
+        this._actualizarPositionState(currentTime, duration);
+      } else if (!this.isUsingNativeAudio && this.ytPlayer && this.ytPlayer.getCurrentTime) {
         const currentTime = this.ytPlayer.getCurrentTime() || 0;
         const duration = this.ytPlayer.getDuration() || 0;
         this._emit('timeUpdate', { currentTime, duration });
@@ -178,26 +202,65 @@ export class AudioEngine {
   }
 
   /**
-   * Carga y reproduce de inmediato sin latencia de red.
-   * Cero bloqueos de servidor: pasa directo al reproductor Iframe para respuesta instantánea.
+   * Carga y reproduce de inmediato sin latencia perceptible.
+   * Consulta el stream nativo .m4a en paralelo; si resuelve, conmuta a <audio>
+   * para garantizar reproducción continua con pantalla bloqueada en iPhone.
    */
-  loadVideo(videoId, track) {
+  async loadVideo(videoId, track) {
     this.currentTrack = track;
-    // Estado optimista: el botón cambia de inmediato sin quedarse "pegado"
     this.currentState = PlaybackState.PLAYING;
     this._emit('stateChange', this.currentState);
     this._configurarMediaSession(track);
 
-    if (!this.isReady || !this.ytPlayer || !this.ytPlayer.loadVideoById) {
+    // Detener reproducciones anteriores
+    if (this.audioElement) {
+      this.audioElement.pause();
+    }
+    if (this.ytPlayer && this.ytPlayer.stopVideo) {
+      this.ytPlayer.stopVideo();
+    }
+
+    // Iniciar con YouTube Iframe para que suene de inmediato (0ms lag)
+    this.isUsingNativeAudio = false;
+    this._reproducirConYouTube(videoId, track);
+
+    // Intentar elevar la sesión a Audio Nativo (m4a) de fondo
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+      const resp = await fetch(`/api/stream?id=${encodeURIComponent(videoId)}`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.status === 'success' && data.stream?.audioUrl) {
+          console.info('[Gomezfy Engine]: Stream nativo obtenido. Promocionando a audio de fondo iOS.');
+          
+          // Sincronizar tiempo actual si ya comenzó a sonar
+          const currentTime = this.ytPlayer?.getCurrentTime?.() || 0;
+          if (this.ytPlayer && this.ytPlayer.pauseVideo) {
+            this.ytPlayer.pauseVideo();
+          }
+
+          this.isUsingNativeAudio = true;
+          this.audioElement.src = data.stream.audioUrl;
+          this.audioElement.currentTime = currentTime;
+          await this.audioElement.play();
+        }
+      }
+    } catch (e) {
+      // Si la consulta de stream expira o no responde, continúa en YouTube Iframe sin interrupción
+    }
+  }
+
+  _reproducirConYouTube(videoId, track) {
+    if (!this.ytPlayer || !this.ytPlayer.loadVideoById) {
       this.pendingVideoId = videoId;
       this.pendingTrack = track;
       return;
     }
 
-    this._ejecutarCargaInmediata(videoId, track);
-  }
-
-  _ejecutarCargaInmediata(videoId, track) {
     try {
       this.ytPlayer.loadVideoById({
         videoId: videoId,
@@ -205,25 +268,17 @@ export class AudioEngine {
       });
       this.ytPlayer.playVideo();
     } catch (e) {
-      console.warn('Error en loadVideoById, reintentando con fallback:', e);
-      try {
-        this.ytPlayer.cueVideoById(videoId, 0);
-        this.ytPlayer.playVideo();
-      } catch (e2) {
-        console.error('Error crítico reproduciendo:', e2);
-      }
+      console.warn('Error en loadVideoById:', e);
     }
   }
 
   play() {
-    if (this.audioContext && this.audioContext.state === 'suspended') {
-      this.audioContext.resume().catch(() => {});
-    }
-
     this.currentState = PlaybackState.PLAYING;
     this._emit('stateChange', this.currentState);
 
-    if (this.ytPlayer && this.ytPlayer.playVideo) {
+    if (this.isUsingNativeAudio && this.audioElement) {
+      this.audioElement.play().catch(() => {});
+    } else if (this.ytPlayer && this.ytPlayer.playVideo) {
       this.ytPlayer.playVideo();
     }
   }
@@ -232,27 +287,39 @@ export class AudioEngine {
     this.currentState = PlaybackState.PAUSED;
     this._emit('stateChange', this.currentState);
 
-    if (this.ytPlayer && this.ytPlayer.pauseVideo) {
+    if (this.isUsingNativeAudio && this.audioElement) {
+      this.audioElement.pause();
+    } else if (this.ytPlayer && this.ytPlayer.pauseVideo) {
       this.ytPlayer.pauseVideo();
     }
   }
 
   seek(seconds) {
-    if (this.ytPlayer && this.ytPlayer.seekTo) {
+    if (this.isUsingNativeAudio && this.audioElement) {
+      this.audioElement.currentTime = seconds;
+    } else if (this.ytPlayer && this.ytPlayer.seekTo) {
       this.ytPlayer.seekTo(seconds, true);
     }
   }
 
   getDuration() {
+    if (this.isUsingNativeAudio && this.audioElement) {
+      return this.audioElement.duration || 0;
+    }
     return this.ytPlayer?.getDuration?.() || 0;
   }
 
   getCurrentTime() {
+    if (this.isUsingNativeAudio && this.audioElement) {
+      return this.audioElement.currentTime || 0;
+    }
     return this.ytPlayer?.getCurrentTime?.() || 0;
   }
 
   setVolume(volumeFraction) {
-    if (this.ytPlayer && this.ytPlayer.setVolume) {
+    if (this.isUsingNativeAudio && this.audioElement) {
+      this.audioElement.volume = Math.max(0, Math.min(1, volumeFraction));
+    } else if (this.ytPlayer && this.ytPlayer.setVolume) {
       this.ytPlayer.setVolume(Math.round(volumeFraction * 100));
     }
   }
@@ -274,7 +341,6 @@ export class AudioEngine {
       ]
     });
 
-    // Control directo desde la pantalla de bloqueo de iOS
     navigator.mediaSession.setActionHandler('play', () => this.play());
     navigator.mediaSession.setActionHandler('pause', () => this.pause());
     navigator.mediaSession.setActionHandler('seekto', (details) => {

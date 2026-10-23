@@ -6,6 +6,7 @@ para habilitar reproducción en segundo plano y controles en la pantalla de bloq
 from http.server import BaseHTTPRequestHandler
 import json
 import logging
+import os
 import urllib.parse
 from typing import Dict, Any, Optional
 
@@ -29,7 +30,7 @@ class AudioStreamService:
         Utiliza caché en memoria para minimizar tiempos de respuesta.
         """
         if not video_id or not video_id.strip():
-            return {"error": "video_id vacio"}
+            return None
 
         clean_id = video_id.strip()
 
@@ -38,7 +39,10 @@ class AudioStreamService:
             return cls._cache[clean_id]
 
         if not yt_dlp:
-            return {"error": "yt_dlp no instalado"}
+            logger.error("yt_dlp no está instalado.")
+            return None
+
+        cookie_path = os.path.join(os.path.dirname(__file__), 'cookies.txt')
 
         ydl_opts = {
             'format': 'bestaudio[ext=m4a]/bestaudio/best',
@@ -46,13 +50,13 @@ class AudioStreamService:
             'no_warnings': True,
             'extract_flat': False,
             'cachedir': False,
-            'socket_timeout': 8,
-            'extractor_args': {
-                'youtube': {
-                    'player_client': ['android', 'web', 'ios']
-                }
-            }
+            'socket_timeout': 15,
+            'js_runtimes': {'node': {}},
+            'remote_components': ['ejs:github']
         }
+
+        if os.path.exists(cookie_path) and os.path.getsize(cookie_path) > 0:
+            ydl_opts['cookiefile'] = cookie_path
 
         url = f"https://www.youtube.com/watch?v={clean_id}"
 
@@ -60,12 +64,15 @@ class AudioStreamService:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
                 if not info:
-                    return {"error": "info vacia"}
+                    return None
 
                 audio_url = info.get('url')
                 duration = info.get('duration', 0)
                 title = info.get('title', '')
                 thumbnail = info.get('thumbnail', '')
+
+                if not audio_url:
+                    return None
 
                 resultado = {
                     "id": clean_id,
@@ -84,7 +91,7 @@ class AudioStreamService:
                 return resultado
         except Exception as e:
             logger.exception("Error al resolver URL de audio para el video %s: %s", clean_id, e)
-            return {"error": str(e), "error_type": type(e).__name__}
+            return None
 
 
 class handler(BaseHTTPRequestHandler):
@@ -100,8 +107,8 @@ class handler(BaseHTTPRequestHandler):
             respuesta = json.dumps({"status": "success", "stream": resultado}, ensure_ascii=False)
             self.send_response(200)
         else:
-            respuesta = json.dumps({"status": "error", "detail": resultado}, ensure_ascii=False)
-            self.send_response(500)
+            respuesta = json.dumps({"status": "error", "message": "No se pudo extraer flujo de audio."}, ensure_ascii=False)
+            self.send_response(404)
 
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Access-Control-Allow-Origin", "*")

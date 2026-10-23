@@ -126,8 +126,6 @@ class AudioStreamService:
             logger.error("yt_dlp no está instalado en el entorno.")
             return None
 
-        ruta_cookies = resolver_ruta_cookies()
-
         ydl_opts = {
             'format': 'bestaudio[ext=m4a]/bestaudio/best',
             'quiet': True,
@@ -143,8 +141,13 @@ class AudioStreamService:
             }
         }
 
-        if ruta_cookies:
-            ydl_opts['cookiefile'] = ruta_cookies
+        # En Vercel (IPs de centros de datos de AWS), el cliente Android anónimo NO sufre bloqueos por IP de sesión.
+        # Solo adjuntamos cookies si se configuran explícitamente vía variable de entorno.
+        env_cookies = os.environ.get("YOUTUBE_COOKIES")
+        if env_cookies and env_cookies.strip():
+            ruta_cookies = resolver_ruta_cookies()
+            if ruta_cookies:
+                ydl_opts['cookiefile'] = ruta_cookies
 
         url = f"https://www.youtube.com/watch?v={clean_id}"
 
@@ -180,8 +183,7 @@ class AudioStreamService:
 
                 return resultado
         except Exception as e:
-            f_size = os.path.getsize(ruta_cookies) if ruta_cookies and os.path.exists(ruta_cookies) else -1
-            cls.last_error = f"cookie_path={ruta_cookies}, size={f_size}, err={type(e).__name__}: {str(e)}"
+            cls.last_error = f"{type(e).__name__}: {str(e)}"
             logger.exception("Error al resolver stream para el video %s: %s", clean_id, e)
             return None
 

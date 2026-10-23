@@ -134,10 +134,11 @@ class AudioStreamService:
             'no_warnings': True,
             'extract_flat': False,
             'cachedir': False,
-            'socket_timeout': 8,
+            'socket_timeout': 10,
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['android', 'ios']
+                    'player_client': ['android'],
+                    'player_skip': ['web', 'mweb', 'web_creator', 'ios']
                 }
             }
         }

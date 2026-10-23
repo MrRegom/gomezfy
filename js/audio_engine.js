@@ -203,8 +203,9 @@ export class AudioEngine {
 
   /**
    * Carga y reproduce de inmediato sin latencia perceptible.
-   * Consulta el stream nativo .m4a en paralelo; si resuelve, conmuta a <audio>
-   * para garantizar reproducción continua con pantalla bloqueada en iPhone.
+   * Desbloquea el elemento de audio nativo durante el toque del usuario,
+   * y consulta en paralelo el stream nativo .m4a para garantizar reproducción
+   * ininterrumpida con pantalla bloqueada en iOS (iPhone).
    */
   async loadVideo(videoId, track) {
     this.currentTrack = track;
@@ -212,22 +213,28 @@ export class AudioEngine {
     this._emit('stateChange', this.currentState);
     this._configurarMediaSession(track);
 
-    // Detener reproducciones anteriores
+    // Desbloquear / preparar canal de audio nativo en iOS durante el evento del usuario
     if (this.audioElement) {
       this.audioElement.pause();
+      // Silencio mínimo para autorizar audio en segundo plano en Safari iOS
+      if (!this.audioElement.src || this.audioElement.src.startsWith('data:')) {
+        this.audioElement.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+        this.audioElement.play().catch(() => {});
+      }
     }
+
     if (this.ytPlayer && this.ytPlayer.stopVideo) {
       this.ytPlayer.stopVideo();
     }
 
-    // Iniciar con YouTube Iframe para que suene de inmediato (0ms lag)
+    // Iniciar de inmediato con YouTube Iframe (cero latencia para el usuario)
     this.isUsingNativeAudio = false;
     this._reproducirConYouTube(videoId, track);
 
-    // Intentar elevar la sesión a Audio Nativo (m4a) de fondo
+    // Elevar la sesión a Audio Nativo (m4a) en segundo plano
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
 
       const resp = await fetch(`/api/stream?id=${encodeURIComponent(videoId)}`, { signal: controller.signal });
       clearTimeout(timeoutId);
@@ -235,22 +242,23 @@ export class AudioEngine {
       if (resp.ok) {
         const data = await resp.json();
         if (data.status === 'success' && data.stream?.audioUrl) {
-          console.info('[Gomezfy Engine]: Stream nativo obtenido. Promocionando a audio de fondo iOS.');
-          
-          // Sincronizar tiempo actual si ya comenzó a sonar
-          const currentTime = this.ytPlayer?.getCurrentTime?.() || 0;
-          if (this.ytPlayer && this.ytPlayer.pauseVideo) {
-            this.ytPlayer.pauseVideo();
-          }
+          // Validar que el usuario no haya cambiado de canción durante la petición
+          if (this.currentTrack && this.currentTrack.id === videoId) {
+            console.info('[Gomezfy Engine]: Stream m4a nativo activo para reproducción con pantalla bloqueada.');
+            const currentTime = this.ytPlayer?.getCurrentTime?.() || 0;
+            if (this.ytPlayer && this.ytPlayer.pauseVideo) {
+              this.ytPlayer.pauseVideo();
+            }
 
-          this.isUsingNativeAudio = true;
-          this.audioElement.src = data.stream.audioUrl;
-          this.audioElement.currentTime = currentTime;
-          await this.audioElement.play();
+            this.isUsingNativeAudio = true;
+            this.audioElement.src = data.stream.audioUrl;
+            this.audioElement.currentTime = currentTime;
+            await this.audioElement.play();
+          }
         }
       }
     } catch (e) {
-      // Si la consulta de stream expira o no responde, continúa en YouTube Iframe sin interrupción
+      console.warn('[Gomezfy Engine]: Manteniendo reproducción estándar:', e.message);
     }
   }
 

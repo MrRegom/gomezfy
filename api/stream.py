@@ -1,12 +1,11 @@
 """
 Módulo de servicio para extracción y resolución de stream de audio directo.
 Permite reproducir pistas de YouTube directamente en un elemento HTML5 <audio>
-para habilitar reproducción en segundo plano y controles en la pantalla de bloqueo de iOS (iPhone).
+para habilitar reproducción ininterrumpida con pantalla bloqueada en iOS (iPhone).
 """
 from http.server import BaseHTTPRequestHandler
 import json
 import logging
-import os
 import urllib.parse
 from typing import Dict, Any, Optional
 
@@ -15,11 +14,16 @@ try:
 except ImportError:
     yt_dlp = None
 
+try:
+    from api.youtube_auth import obtener_ruta_cookies
+except ImportError:
+    from youtube_auth import obtener_ruta_cookies
+
 logger = logging.getLogger(__name__)
 
 
 class AudioStreamService:
-    """Servicio de resolución de URLs de audio nativo (m4a/aac/mp3)."""
+    """Servicio de resolución de URLs de audio nativo (m4a/mp4/aac)."""
 
     _cache: Dict[str, Dict[str, Any]] = {}
 
@@ -27,22 +31,22 @@ class AudioStreamService:
     def obtener_url_audio(cls, video_id: str) -> Optional[Dict[str, Any]]:
         """
         Extrae la URL directa del flujo de audio del video especificado.
-        Utiliza caché en memoria para minimizar tiempos de respuesta.
+        Utiliza el cliente móvil oficial de YouTube autenticado para evadir desafíos JS en Vercel.
         """
         if not video_id or not video_id.strip():
             return None
 
         clean_id = video_id.strip()
 
-        # Verificar caché en memoria
+        # Caché en memoria para respuesta instantánea (0ms)
         if clean_id in cls._cache:
             return cls._cache[clean_id]
 
         if not yt_dlp:
-            logger.error("yt_dlp no está instalado.")
+            logger.error("yt_dlp no está instalado en el entorno.")
             return None
 
-        cookie_path = os.path.join(os.path.dirname(__file__), 'cookies.txt')
+        ruta_cookies = obtener_ruta_cookies()
 
         ydl_opts = {
             'format': 'bestaudio[ext=m4a]/bestaudio/best',
@@ -50,13 +54,16 @@ class AudioStreamService:
             'no_warnings': True,
             'extract_flat': False,
             'cachedir': False,
-            'socket_timeout': 15,
-            'js_runtimes': {'node': {}},
-            'remote_components': ['ejs:github']
+            'socket_timeout': 8,
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'ios']
+                }
+            }
         }
 
-        if os.path.exists(cookie_path) and os.path.getsize(cookie_path) > 0:
-            ydl_opts['cookiefile'] = cookie_path
+        if ruta_cookies:
+            ydl_opts['cookiefile'] = ruta_cookies
 
         url = f"https://www.youtube.com/watch?v={clean_id}"
 
@@ -83,19 +90,19 @@ class AudioStreamService:
                     "format": info.get('ext', 'm4a')
                 }
 
-                # Guardar en caché (máximo 100 elementos)
-                if len(cls._cache) > 100:
+                # Limitar tamaño de caché a 100 elementos FIFO
+                if len(cls._cache) >= 100:
                     cls._cache.pop(next(iter(cls._cache)))
                 cls._cache[clean_id] = resultado
 
                 return resultado
         except Exception as e:
-            logger.exception("Error al resolver URL de audio para el video %s: %s", clean_id, e)
+            logger.exception("Error al resolver stream para el video %s: %s", clean_id, e)
             return None
 
 
 class handler(BaseHTTPRequestHandler):
-    """Manejador Serverless para Vercel."""
+    """Manejador Serverless para Vercel Functions."""
 
     def do_GET(self):
         partes_url = urllib.parse.urlparse(self.path)

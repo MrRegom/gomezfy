@@ -180,7 +180,8 @@ class AudioStreamService:
 
                 return resultado
         except Exception as e:
-            cls.last_error = f"{type(e).__name__}: {str(e)}"
+            f_size = os.path.getsize(ruta_cookies) if ruta_cookies and os.path.exists(ruta_cookies) else -1
+            cls.last_error = f"cookie_path={ruta_cookies}, size={f_size}, err={type(e).__name__}: {str(e)}"
             logger.exception("Error al resolver stream para el video %s: %s", clean_id, e)
             return None
 

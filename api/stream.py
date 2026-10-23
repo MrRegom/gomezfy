@@ -26,6 +26,7 @@ class AudioStreamService:
     """Servicio de resolución de URLs de audio nativo (m4a/mp4/aac)."""
 
     _cache: Dict[str, Dict[str, Any]] = {}
+    last_error: str = "None"
 
     @classmethod
     def obtener_url_audio(cls, video_id: str) -> Optional[Dict[str, Any]]:
@@ -34,6 +35,7 @@ class AudioStreamService:
         Utiliza el cliente móvil oficial de YouTube autenticado para evadir desafíos JS en Vercel.
         """
         if not video_id or not video_id.strip():
+            cls.last_error = "Video ID empty"
             return None
 
         clean_id = video_id.strip()
@@ -43,6 +45,7 @@ class AudioStreamService:
             return cls._cache[clean_id]
 
         if not yt_dlp:
+            cls.last_error = "yt_dlp no esta instalado en Vercel"
             logger.error("yt_dlp no está instalado en el entorno.")
             return None
 
@@ -71,6 +74,7 @@ class AudioStreamService:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
                 if not info:
+                    cls.last_error = "extract_info devolvio None"
                     return None
 
                 audio_url = info.get('url')
@@ -79,6 +83,7 @@ class AudioStreamService:
                 thumbnail = info.get('thumbnail', '')
 
                 if not audio_url:
+                    cls.last_error = "No se encontro audio_url en info"
                     return None
 
                 resultado = {
@@ -97,6 +102,7 @@ class AudioStreamService:
 
                 return resultado
         except Exception as e:
+            cls.last_error = f"{type(e).__name__}: {str(e)}"
             logger.exception("Error al resolver stream para el video %s: %s", clean_id, e)
             return None
 
@@ -114,8 +120,13 @@ class handler(BaseHTTPRequestHandler):
             respuesta = json.dumps({"status": "success", "stream": resultado}, ensure_ascii=False)
             self.send_response(200)
         else:
-            respuesta = json.dumps({"status": "error", "message": "No se pudo extraer flujo de audio."}, ensure_ascii=False)
-            self.send_response(404)
+            respuesta = json.dumps({
+                "status": "error",
+                "message": "No se pudo extraer flujo de audio.",
+                "debug": AudioStreamService.last_error,
+                "yt_dlp_available": yt_dlp is not None
+            }, ensure_ascii=False)
+            self.send_response(200)
 
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Access-Control-Allow-Origin", "*")

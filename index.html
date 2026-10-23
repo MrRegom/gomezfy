@@ -5,7 +5,7 @@
   <title>Gomezfy Music</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   
-  <!-- Configuración PWA para iOS iPhone -->
+  <!-- Configuración PWA para iOS iPhone (Standalone Pantalla Completa) -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Gomezfy">
@@ -13,11 +13,10 @@
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#121212">
 
-  <!-- Hojas de Estilo -->
+  <!-- Hojas de Estilo Spotify Native -->
   <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
-
 
   <!-- Barra Superior -->
   <header class="top-bar">
@@ -31,26 +30,43 @@
     </div>
   </header>
 
+  <!-- Píldoras de Filtros Rápidos (Estilo Spotify Mobile) -->
+  <div class="category-pills-bar">
+    <button type="button" class="category-pill active" data-genre="">Todas</button>
+    <button type="button" class="category-pill" data-genre="musica">Música</button>
+    <button type="button" class="category-pill" data-genre="rock">Rock</button>
+    <button type="button" class="category-pill" data-genre="urbano">Urbano</button>
+    <button type="button" class="category-pill" data-genre="pop">Pop</button>
+    <button type="button" class="category-pill" data-genre="cumbia">Cumbia</button>
+  </div>
+
   <!-- Contenedor de Vistas -->
   <main class="views-container">
     
     <!-- Vista 1: Buscador -->
     <section class="view-section active" id="viewSearch">
       <div class="search-box-wrapper">
-        <input type="search" id="inputSearch" class="search-input" placeholder="Buscar canciones, artistas o bandas..." autocomplete="off">
+        <input type="search" id="inputSearch" class="search-input" placeholder="¿Qué quieres escuchar hoy?" autocomplete="off" autocorrect="off" autocapitalize="none">
       </div>
+
+      <div class="quick-header-section" id="sectionHeaderQuick" style="display: none;">
+        <h3 class="section-title">Resultados</h3>
+      </div>
+
       <div class="track-list" id="searchResultsList">
-        <p style="color: var(--text-muted); text-align: center; margin-top: 40px;">
-          Escribe el nombre de una canción para escuchar sin anuncios.
-        </p>
+        <div class="empty-search-state">
+          <div class="empty-search-icon">🔍</div>
+          <h3>Busca tus canciones favoritas</h3>
+          <p>Escribe el nombre de un artista, banda o canción para reproducir sin anuncios.</p>
+        </div>
       </div>
     </section>
 
     <!-- Vista 2: Mis Listas y Favoritos -->
     <section class="view-section" id="viewPlaylists">
       <div class="playlist-header-actions">
-        <h2>Tus Listas</h2>
-        <button type="button" class="btn-primary" id="btnCrearLista">+ Nueva Lista</button>
+        <h2>Tu Biblioteca</h2>
+        <button type="button" class="btn-primary" id="btnCrearLista">+ Crear Lista</button>
       </div>
       <div class="playlist-grid" id="playlistGridContainer">
         <!-- Generado dinámicamente -->
@@ -62,98 +78,144 @@
       </div>
     </section>
 
-    <!-- Vista 3: Letras (Karaoke) -->
+    <!-- Vista 3: Letras (Karaoke Completo) -->
     <section class="view-section" id="viewLyrics">
-      <h2 style="margin-bottom: 8px;">Letra de la Canción</h2>
-      <p id="txtLyricsTrackInfo" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px;">Sin reproducción activa</p>
+      <div class="lyrics-view-header">
+        <h2 style="font-size: 1.4rem;">Letra Sincronizada</h2>
+        <p id="txtLyricsTrackInfo" style="color: var(--text-muted); font-size: 0.85rem; margin-top: 4px;">Sin reproducción activa</p>
+      </div>
       <div class="lyrics-container" id="lyricsContentList">
-        <p class="lyrics-line">Reproduce una pista para ver la letra sincronizada.</p>
+        <p class="lyrics-line">Reproduce una pista para ver la letra en tiempo real.</p>
       </div>
     </section>
 
   </main>
 
-  <!-- Mini Player Flotante -->
+  <!-- Mini Player Flotante (Estilo Spotify Mobile) -->
   <aside class="mini-player" id="miniPlayer" style="display: none;">
-    <img src="/icons/apple-touch-icon.png" alt="Portada" class="mini-thumb" id="miniThumb">
-    <div class="mini-info" id="miniInfoZone">
-      <div class="mini-title" id="miniTitle">Título</div>
-      <div class="mini-artist" id="miniArtist">Artista</div>
+    <div class="mini-left" id="miniInfoZone">
+      <img src="/icons/apple-touch-icon.png" alt="Portada" class="mini-thumb" id="miniThumb">
+      <div class="mini-text">
+        <div class="mini-title" id="miniTitle">Título</div>
+        <div class="mini-artist" id="miniArtist">Artista</div>
+      </div>
     </div>
     <div class="mini-controls">
-      <button type="button" class="icon-btn" id="btnMiniFavorite" title="Favorito">🤍</button>
-      <button type="button" class="mini-play-btn" id="btnMiniPlayPause" title="Reproducir/Pausar">▶</button>
+      <button type="button" class="mini-btn-action" id="btnMiniFavorite" title="Favorito">🤍</button>
+      <button type="button" class="mini-btn-play" id="btnMiniPlayPause" title="Reproducir/Pausar">▶</button>
+    </div>
+    <!-- Línea de progreso de 2px en la base del mini-player -->
+    <div class="mini-progress-track">
+      <div class="mini-progress-fill" id="miniProgressFill"></div>
     </div>
   </aside>
 
-  <!-- Barra Inferior de Navegación (Tabs) -->
+  <!-- Barra Inferior de Navegación (Tabs Nativas Estilo Spotify) -->
   <nav class="bottom-nav">
     <div class="nav-item active" data-view="viewSearch">
       <span class="nav-icon">🔍</span>
-      <span>Buscar</span>
+      <span class="nav-label">Buscar</span>
     </div>
     <div class="nav-item" data-view="viewPlaylists">
       <span class="nav-icon">📚</span>
-      <span>Listas</span>
+      <span class="nav-label">Tu Biblioteca</span>
     </div>
     <div class="nav-item" data-view="viewLyrics">
       <span class="nav-icon">🎤</span>
-      <span>Letras</span>
+      <span class="nav-label">Letras</span>
     </div>
   </nav>
 
-  <!-- Modal Reproductor Completo -->
+  <!-- Modal Reproductor Completo (Estilo Spotify Mobile Exacto) -->
   <div class="player-modal" id="playerModal">
+    <!-- Fondo ambiental difuminado -->
+    <div class="ambient-backdrop" id="ambientBackdrop"></div>
+
     <div class="modal-header">
-      <button type="button" class="icon-btn" id="btnCerrarModal">⌄</button>
-      <span style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Reproduciendo</span>
-      <button type="button" class="icon-btn" id="btnModalAddPlaylist">➕</button>
+      <button type="button" class="icon-btn-touch" id="btnCerrarModal" aria-label="Minimizar reproductor">⌄</button>
+      <div class="modal-header-meta">
+        <span class="header-pretitle">REPRODUCIENDO DE TU BÚSQUEDA</span>
+        <span class="header-subtitle" id="headerSongSubtitle">Gomezfy Sessions</span>
+      </div>
+      <button type="button" class="icon-btn-touch" id="btnModalAddPlaylist" aria-label="Agregar a playlist">➕</button>
     </div>
     
     <div class="modal-cover-wrap">
-      <!-- Disco Vinilo / Album Art con animación continua de rotación (Modern Music Player) -->
-      <div class="vinyl-disc-container" id="vinylDisc">
-        <div class="vinyl-record">
-          <div class="vinyl-grooves-overlay"></div>
-          <img src="/icons/icon-512.png" alt="Carátula de álbum" class="vinyl-cover-img" id="modalCover">
-          <div class="vinyl-center-spindle">
-            <div class="vinyl-spindle-hole"></div>
-          </div>
-        </div>
+      <!-- Portada grande con bordes redondeados y sombra suave estilo Spotify -->
+      <div class="spotify-art-card">
+        <img src="/icons/icon-512.png" alt="Carátula" class="spotify-cover-img" id="modalCover">
       </div>
-      <!-- Contenedor activo para YouTube Iframe Fallback con dimensiones reales -->
+      <!-- Contenedor activo de YouTube con dimensiones reales oculto con opacidad cero -->
       <div id="yt-player-container" class="yt-hidden-player"></div>
     </div>
 
-    <div class="modal-meta">
-      <div>
-        <div class="modal-title" id="modalTitle">Canción</div>
-        <div class="modal-artist" id="modalArtist">Artista</div>
+    <!-- Información de la Canción y Acciones -->
+    <div class="modal-meta-row">
+      <div class="meta-texts">
+        <h2 class="song-title-main" id="modalTitle">Canción</h2>
+        <div class="artist-sub-row">
+          <span class="explicit-tag">E</span>
+          <span class="artist-name-main" id="modalArtist">Artista</span>
+        </div>
       </div>
-      <button type="button" class="icon-btn" id="btnModalFavorite" style="font-size: 1.5rem;">🤍</button>
+      <div class="meta-side-actions">
+        <button type="button" class="icon-btn-touch btn-favorite-toggle" id="btnModalFavorite" aria-label="Marcar como favorita">🤍</button>
+      </div>
     </div>
 
-    <div class="modal-scrubber">
-      <input type="range" class="seek-bar" id="modalSeekSlider" min="0" max="100" value="0" step="0.1">
-      <div class="time-labels">
+    <!-- Scrubber con Línea Fina y Countdown Negativo -->
+    <div class="modal-scrubber-spotify">
+      <input type="range" class="spotify-seek-slider" id="modalSeekSlider" min="0" max="100" value="0" step="0.1">
+      <div class="time-labels-row">
         <span id="lblCurrentTime">0:00</span>
-        <span id="lblTotalTime">0:00</span>
+        <span id="lblTotalTime">-0:00</span>
       </div>
     </div>
 
-    <div class="modal-controls">
-      <button type="button" class="icon-btn" id="btnModalShuffle">🔀</button>
-      <button type="button" class="icon-btn" id="btnModalPrev" style="font-size: 1.6rem;">⏮</button>
-      <button type="button" class="play-large-btn" id="btnModalPlayPause">▶</button>
-      <button type="button" class="icon-btn" id="btnModalNext" style="font-size: 1.6rem;">⏭</button>
-      <button type="button" class="icon-btn" id="btnModalRepeat">🔁</button>
-    </div>
+    <!-- Controles Principales de Reproducción (Botón Blanco Circular Grande) -->
+    <div class="spotify-controls-row">
+      <button type="button" class="control-btn" id="btnModalShuffle" aria-label="Aleatorio">
+        <span class="ctrl-icon">🔀</span>
+        <span class="ctrl-dot"></span>
+      </button>
 
-    <div class="modal-secondary-actions">
-      <button type="button" class="icon-btn" id="btnIrALetras" style="display: flex; align-items: center; gap: 6px; font-size: 0.9rem;">
-        <span>🎤</span> Ver Letra
+      <button type="button" class="control-btn btn-skip" id="btnModalPrev" aria-label="Pista anterior">
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+          <path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/>
+        </svg>
+      </button>
+
+      <!-- Botón Central Blanco Circular 64px con respuesta táctil instantánea -->
+      <button type="button" class="spotify-main-play-btn" id="btnModalPlayPause" aria-label="Reproducir o Pausar">
+        <svg id="svgPlayIcon" viewBox="0 0 24 24" width="30" height="30" fill="currentColor">
+          <path d="M8 5v14l11-7z"/>
+        </svg>
+        <svg id="svgPauseIcon" viewBox="0 0 24 24" width="28" height="28" fill="currentColor" style="display: none;">
+          <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+        </svg>
+      </button>
+
+      <button type="button" class="control-btn btn-skip" id="btnModalNext" aria-label="Pista siguiente">
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+          <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
+        </svg>
+      </button>
+
+      <button type="button" class="control-btn" id="btnModalRepeat" aria-label="Repetir">
+        <span class="ctrl-icon">🔁</span>
+        <span class="ctrl-dot"></span>
       </button>
     </div>
+
+    <!-- Tarjeta Inferior de Vista Previa de Letras (Estilo Spotify Canvas) -->
+    <div class="lyrics-preview-card" id="btnIrALetras">
+      <div class="lyrics-card-top">
+        <span class="lyrics-card-label">Letra</span>
+        <span class="lyrics-card-expand">⤢</span>
+      </div>
+      <p class="lyrics-card-preview-text" id="lyricsCardPreviewText">Toca aquí para ver la letra sincronizada</p>
+    </div>
+
   </div>
 
   <!-- Diálogo: Selector de Perfiles (Papá / Hijo) -->

@@ -44,11 +44,13 @@ jobs:
                      CODE_SIGN_IDENTITY="" \
                      PROVISIONING_PROFILE_SPECIFIER="" \
                      AD_HOC_CODE_SIGNING_ALLOWED=YES 2>&1 | tee xcodebuild.log || {
-            echo "::error::Falló la compilación de Xcode"
-            echo "=== LINEAS DE ERROR ==="
-            grep -in "error:" xcodebuild.log || true
-            echo "=== ULTIMAS 80 LINEAS DEL LOG ==="
-            tail -n 80 xcodebuild.log
+            echo "Falló la compilación de Xcode. Extrayendo errores exactos para anotaciones:"
+            grep -i "error:" xcodebuild.log | tail -n 10 | while IFS= read -r line; do
+              echo "::error file=ios/App/xcodebuild.log::$line"
+            done
+            tail -n 15 xcodebuild.log | while IFS= read -r line; do
+              echo "::notice file=ios/App/xcodebuild.log::$line"
+            done
             exit 1
           }
 

@@ -1,4 +1,4 @@
-name: Compilar iOS App (Gomezfy)
+name: Compilar IPA iOS (Gomezfy)
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
     branches: [ main ]
 
 jobs:
-  build-ios:
+  build-ipa:
     runs-on: macos-14
     steps:
       - name: Checkout Repositorio
@@ -16,28 +16,38 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Instalar dependencias
-        run: npm ci
+        run: npm install
 
-      - name: Sincronizar proyecto iOS
-        run: npm run sync:ios
+      - name: Copiar archivos web a iOS
+        run: |
+          node build_www.js
+          npx cap copy ios
 
-      - name: Compilar App con Xcode (Simulador / Distribución)
+      - name: Compilar App con Xcode (ARM64 para iPhone Físico)
         run: |
           cd ios/App
-          xcodebuild -workspace App.xcworkspace \
+          xcodebuild -project App.xcodeproj \
                      -scheme App \
                      -configuration Release \
-                     -sdk iphonesimulator \
+                     -sdk iphoneos \
                      -derivedDataPath build \
                      CODE_SIGN_IDENTITY="" \
                      CODE_SIGNING_REQUIRED=NO \
                      CODE_SIGNING_ALLOWED=NO
 
-      - name: Subir Artifact de la App iOS
+      - name: Empaquetar como Gomezfy.ipa
+        run: |
+          cd ios/App
+          mkdir Payload
+          cp -r build/Build/Products/Release-iphoneos/App.app Payload/
+          zip -r ../../Gomezfy.ipa Payload
+          cd ../..
+
+      - name: Subir Gomezfy.ipa a Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Gomezfy-iOS-App
-          path: ios/App/build/Build/Products/Release-iphonesimulator/App.app
+          name: Gomezfy-iOS-IPA
+          path: Gomezfy.ipa
+          retention-days: 14

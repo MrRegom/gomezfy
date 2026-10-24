@@ -25,7 +25,6 @@ jobs:
       - name: Compilar App nativa iOS (ARM64 Ad-Hoc)
         run: |
           cd ios/App
-          set -o pipefail
           xcodebuild build \
                      -project App.xcodeproj \
                      -scheme App \

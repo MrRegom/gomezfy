@@ -41,6 +41,8 @@ export class AudioEngine {
     this.timerInterval = null;
     this.pendingVideoId = null;
     this.pendingTrack = null;
+    this.audioUnlocked = false;
+    this.streamCache = new Map();
 
     this._configurarEventosAudioNativo();
     this._cargarScriptYouTube();
@@ -216,10 +218,27 @@ export class AudioEngine {
   }
 
   /**
-   * Carga y reproduce audio nativo con el patrón Prime & Swap para iOS.
-   * 1. Prime: Desbloquea el canal de audio de Safari durante el toque del usuario con un silencio ultra-ligero.
-   * 2. Swap: Al obtener el stream .m4a (<800ms), sustituye el src y reproduce en el mismo elemento ya desbloqueado.
-   * 3. Permite reproducción ininterrumpida al bloquear el iPhone o cambiar de app.
+   * Pre-carga silenciosa de la URL de stream de la siguiente canción.
+   * Garantiza transición inmediata en 0ms desde la pantalla de bloqueo de iOS.
+   */
+  async prefetchStream(videoId) {
+    if (!videoId || this.streamCache.has(videoId)) return;
+    try {
+      const resp = await fetch(`/api/stream?id=${encodeURIComponent(videoId)}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.status === 'success' && data.stream?.audioUrl) {
+          this.streamCache.set(videoId, data.stream.audioUrl);
+        }
+      }
+    } catch (_) {}
+  }
+
+  /**
+   * Carga y reproduce audio nativo con soporte ininterrumpido en iOS.
+   * - Solo desbloquea el canal con silencio la PRIMERA vez que el usuario interactúa.
+   * - Al cambiar de pista o adelantar en segundo plano, NUNCA vacía el audio con silencios
+   *   para evitar que WebKit suspenda el proceso en segundo plano.
    */
   async loadVideo(videoId, track) {
     this.currentTrack = track;
@@ -227,12 +246,12 @@ export class AudioEngine {
     this._emit('stateChange', this.currentState);
     this._configurarMediaSession(track);
 
-    // 1. PRIME (Síncrono durante el toque del usuario para asegurar la activación permanente de audio en iOS)
-    if (this.audioElement) {
-      // Audio silencioso mínimo en bucle para que WebKit mantenga la sesión de audio abierta y viva
+    // 1. PRIME ÚNICO: Solo la primera interacción táctil requiere desbloqueo de WebKit
+    if (!this.audioUnlocked && this.audioElement) {
       this.audioElement.loop = true;
       this.audioElement.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=';
       this.audioElement.play().catch(() => {});
+      this.audioUnlocked = true;
     }
 
     // Detener cualquier reproducción previa de YouTube iframe para evitar colisiones
@@ -240,21 +259,24 @@ export class AudioEngine {
       try { this.ytPlayer.stopVideo(); } catch (_) {}
     }
 
-    // 2. Obtener stream nativo .m4a desde Vercel
-    let audioUrl = null;
-    try {
-      const resp = await fetch(`/api/stream?id=${encodeURIComponent(videoId)}`);
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data.status === 'success' && data.stream?.audioUrl) {
-          audioUrl = data.stream.audioUrl;
+    // 2. Obtener stream nativo .m4a (desde caché en 0ms o Vercel)
+    let audioUrl = this.streamCache.get(videoId) || null;
+    if (!audioUrl) {
+      try {
+        const resp = await fetch(`/api/stream?id=${encodeURIComponent(videoId)}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.status === 'success' && data.stream?.audioUrl) {
+            audioUrl = data.stream.audioUrl;
+            this.streamCache.set(videoId, audioUrl);
+          }
         }
+      } catch (err) {
+        console.warn('[Gomezfy API stream]:', err.message);
       }
-    } catch (err) {
-      console.warn('[Gomezfy API stream]:', err.message);
     }
 
-    // 3. SWAP: Conmutar la fuente en el elemento nativo ya activado
+    // 3. SWAP DIRECTO: Conmutar la fuente inmediatamente preservando la sesión activa de fondo
     if (audioUrl && this.currentTrack && this.currentTrack.id === videoId) {
       console.info('[Gomezfy Engine]: Reproduciendo audio nativo m4a en segundo plano para iOS.');
       this.isUsingNativeAudio = true;
@@ -269,7 +291,6 @@ export class AudioEngine {
         return;
       } catch (errPlay) {
         console.warn('[Audio Nativo Play Error]:', errPlay);
-        // Reintentar reproducción inmediata en el elemento nativo
         try {
           await this.audioElement.play();
           this.currentState = PlaybackState.PLAYING;
@@ -280,7 +301,7 @@ export class AudioEngine {
       }
     }
 
-    // 4. Último recurso (solo escritorio o cuando no se requiere segundo plano estricto)
+    // 4. Fallback secundario a YouTube iframe
     console.warn('[Gomezfy Engine]: Fallback secundario a YouTube Iframe.');
     this.isUsingNativeAudio = false;
     this._reproducirConYouTube(videoId, track);
@@ -377,6 +398,8 @@ export class AudioEngine {
 
     navigator.mediaSession.setActionHandler('play', () => this.play());
     navigator.mediaSession.setActionHandler('pause', () => this.pause());
+    navigator.mediaSession.setActionHandler('previoustrack', () => this._emit('previous'));
+    navigator.mediaSession.setActionHandler('nexttrack', () => this._emit('next'));
     navigator.mediaSession.setActionHandler('seekto', (details) => {
       if (details.seekTime !== undefined) {
         this.seek(details.seekTime);

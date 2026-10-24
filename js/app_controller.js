@@ -147,6 +147,14 @@ export class AppController {
       this.reproducirSiguiente();
     });
 
+    this.audio.on('next', () => {
+      this.reproducirSiguiente();
+    });
+
+    this.audio.on('previous', () => {
+      this.reproducirAnterior();
+    });
+
     this.audio.on('error', (err) => {
       console.warn('[Reproductor Error]:', err);
       this.reproducirSiguiente();
@@ -400,6 +408,12 @@ export class AppController {
 
     // Reproducción directa e inmediata en el motor
     this.audio.loadVideo(track.id, track);
+
+    // Pre-cargar la siguiente canción para transición sin cortes en la pantalla de bloqueo
+    const siguientePista = this.currentQueue[this.currentIndex + 1];
+    if (siguientePista && siguientePista.id) {
+      this.audio.prefetchStream(siguientePista.id);
+    }
 
     // Cargar Letras de fondo
     this._cargarLetrasPista(track);

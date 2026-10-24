@@ -22,27 +22,25 @@ jobs:
           cd ios/App
           xcodebuild -resolvePackageDependencies -project App.xcodeproj
 
-      - name: Compilar App con Xcode (ARM64 para iPhone)
+      - name: Compilar Archive Xcode (ARM64 Unsigned)
         run: |
           cd ios/App
-          set -o pipefail
-          xcodebuild build \
+          xcodebuild archive \
                      -project App.xcodeproj \
-                     -target App \
+                     -scheme App \
                      -configuration Release \
                      -sdk iphoneos \
-                     -derivedDataPath build \
-                     CODE_SIGNING_ALLOWED="NO" \
-                     CODE_SIGNING_REQUIRED="NO" \
+                     -destination "generic/platform=iOS" \
+                     -archivePath "$PWD/build/App.xcarchive" \
                      CODE_SIGN_IDENTITY="" \
-                     DEVELOPMENT_TEAM="" \
-                     PROVISIONING_PROFILE_SPECIFIER=""
+                     CODE_SIGNING_REQUIRED=NO \
+                     CODE_SIGNING_ALLOWED=NO
 
       - name: Empaquetar como Gomezfy.ipa para Sideloadly
         run: |
           cd ios/App
           mkdir -p Payload
-          cp -r build/Build/Products/Release-iphoneos/App.app Payload/
+          cp -r build/App.xcarchive/Products/Applications/App.app Payload/
           zip -r ../../Gomezfy.ipa Payload
           cd ../..
 

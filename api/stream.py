@@ -36,12 +36,14 @@ class AudioStreamService:
     """Servicio multi-estrategia de resolución de URLs de audio nativo (.m4a / AAC)."""
 
     _cache: Dict[str, Dict[str, Any]] = {}
-    last_error: str = "None"
+    ytdlp_error: str = "None"
+    invidious_error: str = "None"
+    cookie_info: str = "None"
 
     @classmethod
     def obtener_url_audio(cls, video_id: str) -> Optional[Dict[str, Any]]:
         if not video_id or not video_id.strip():
-            cls.last_error = "Video ID vacío"
+            cls.ytdlp_error = "Video ID vacío"
             return None
 
         clean_id = video_id.strip()
@@ -116,7 +118,7 @@ class AudioStreamService:
                             "format": best_audio.get("container", "m4a")
                         }
             except Exception as e:
-                cls.last_error = f"Invidious {base}: {e}"
+                cls.invidious_error = f"Invidious {base}: {e}"
                 continue
 
         return None
@@ -127,15 +129,20 @@ class AudioStreamService:
         tmp_dir = "/tmp" if os.path.exists("/tmp") else os.environ.get("TEMP", "/tmp")
         tmp_cookie = os.path.join(tmp_dir, "youtube_cookies.txt")
         if os.path.exists(tmp_cookie) and os.path.getsize(tmp_cookie) > 100:
+            cls.cookie_info = f"Existing tmp cookie, size={os.path.getsize(tmp_cookie)}"
             return tmp_cookie
 
         if YOUTUBE_COOKIES_TEXT:
             try:
                 with open(tmp_cookie, "w", encoding="utf-8") as f:
                     f.write(YOUTUBE_COOKIES_TEXT)
+                cls.cookie_info = f"Wrote tmp cookie, size={len(YOUTUBE_COOKIES_TEXT)}"
                 return tmp_cookie
             except Exception as e:
+                cls.cookie_info = f"Error writing cookie: {e}"
                 logger.warning(f"Error escribiendo cookies a {tmp_cookie}: {e}")
+        else:
+            cls.cookie_info = "YOUTUBE_COOKIES_TEXT is empty or not imported"
 
         return None
 
@@ -172,7 +179,7 @@ class AudioStreamService:
                         "format": info.get('ext', 'mp4')
                     }
         except Exception as e:
-            cls.last_error = f"yt_dlp: {e}"
+            cls.ytdlp_error = f"yt_dlp: {e}"
         return None
 
 
@@ -192,7 +199,11 @@ class handler(BaseHTTPRequestHandler):
             respuesta = json.dumps({
                 "status": "error",
                 "message": "No se pudo extraer flujo de audio.",
-                "debug": AudioStreamService.last_error
+                "debug": {
+                    "ytdlp": AudioStreamService.ytdlp_error,
+                    "invidious": AudioStreamService.invidious_error,
+                    "cookie": AudioStreamService.cookie_info
+                }
             }, ensure_ascii=False)
             self.send_response(200)
 

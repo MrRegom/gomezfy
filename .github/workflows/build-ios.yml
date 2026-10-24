@@ -17,11 +17,9 @@ jobs:
         with:
           node-version: 20
 
-      - name: Instalar dependencias y sincronizar Capacitor
+      - name: Preparar assets web en el bundle nativo
         run: |
-          npm ci || npm install
           node build_www.js
-          npx cap sync ios
           mkdir -p ios/App/App/public
           cp -r www/* ios/App/App/public/
 

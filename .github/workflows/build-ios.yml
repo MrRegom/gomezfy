@@ -22,27 +22,36 @@ jobs:
           cd ios/App
           xcodebuild -resolvePackageDependencies -project App.xcodeproj
 
-      - name: Compilar Archive Xcode (ARM64 Unsigned)
+      - name: Compilar App nativa iOS (ARM64)
         run: |
           cd ios/App
-          xcodebuild archive \
+          set -o pipefail
+          xcodebuild build \
                      -project App.xcodeproj \
                      -scheme App \
                      -configuration Release \
                      -sdk iphoneos \
-                     -destination "generic/platform=iOS" \
-                     -archivePath "$PWD/build/App.xcarchive" \
-                     CODE_SIGN_IDENTITY="" \
+                     -derivedDataPath build \
+                     CODE_SIGNING_ALLOWED=NO \
                      CODE_SIGNING_REQUIRED=NO \
-                     CODE_SIGNING_ALLOWED=NO
+                     CODE_SIGN_IDENTITY="" > xcode_build.log 2>&1 || {
+            echo "### ❌ Error detallado de Xcode" >> $GITHUB_STEP_SUMMARY
+            echo '```text' >> $GITHUB_STEP_SUMMARY
+            tail -n 45 xcode_build.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -n 100 xcode_build.log
+            exit 1
+          }
 
       - name: Empaquetar como Gomezfy.ipa para Sideloadly
         run: |
           cd ios/App
           mkdir -p Payload
-          cp -r build/App.xcarchive/Products/Applications/App.app Payload/
+          cp -r build/Build/Products/Release-iphoneos/App.app Payload/
           zip -r ../../Gomezfy.ipa Payload
           cd ../..
+          echo "### ✅ ¡Compilación Exitosa!" >> $GITHUB_STEP_SUMMARY
+          echo "El instalador **Gomezfy.ipa** se ha generado correctamente y está listo en la sección **Artifacts** abajo." >> $GITHUB_STEP_SUMMARY
 
       - name: Subir Gomezfy.ipa a Artifacts
         uses: actions/upload-artifact@v4

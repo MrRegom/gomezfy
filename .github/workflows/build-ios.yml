@@ -12,35 +12,45 @@ jobs:
       - name: Checkout Repositorio
         uses: actions/checkout@v4
 
-      - name: Actualizar assets web directamente en proyecto Xcode
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Preparar compilación web
         run: |
+          node build_www.js
           mkdir -p ios/App/App/public
-          cp -r css js icons index.html manifest.json sw.js ios/App/App/public/
+          cp -r www/* ios/App/App/public/
 
       - name: Resolver dependencias Swift Package Manager
         run: |
           cd ios/App
           xcodebuild -resolvePackageDependencies -project App.xcodeproj
 
-      - name: Compilar App nativa iOS (ARM64 Ad-Hoc)
+      - name: Compilar App nativa iOS (ARM64 Ad-Hoc / Sin Firma)
         run: |
           cd ios/App
-          xcodebuild build \
+          set -o pipefail
+          xcodebuild clean build \
                      -project App.xcodeproj \
                      -scheme App \
                      -configuration Release \
                      -sdk iphoneos \
+                     -destination 'generic/platform=iOS' \
                      -derivedDataPath build \
-                     CODE_SIGN_IDENTITY="-" \
+                     CODE_SIGNING_ALLOWED=NO \
                      CODE_SIGNING_REQUIRED=NO \
-                     AD_HOC_CODE_SIGNING_ALLOWED=YES
+                     CODE_SIGN_IDENTITY="" \
+                     PROVISIONING_PROFILE_SPECIFIER="" \
+                     AD_HOC_CODE_SIGNING_ALLOWED=YES 2>&1 | tee xcodebuild.log
 
-      - name: Empaquetar como Gomezfy.ipa para Sideloadly
+      - name: Empaquetar como Gomezfy.ipa para Sideloadly / AltStore
         run: |
           cd ios/App
           mkdir -p Payload
           cp -r build/Build/Products/Release-iphoneos/App.app Payload/
-          zip -r ../../Gomezfy.ipa Payload
+          zip -qr ../../Gomezfy.ipa Payload
           cd ../..
 
       - name: Subir Gomezfy.ipa a Artifacts
@@ -49,3 +59,11 @@ jobs:
           name: Gomezfy-iOS-IPA
           path: Gomezfy.ipa
           retention-days: 14
+
+      - name: Diagnóstico en caso de error
+        if: failure()
+        run: |
+          echo "### Log detallado de xcodebuild" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 80 ios/App/xcodebuild.log >> $GITHUB_STEP_SUMMARY 2>/dev/null || true
+          echo '```' >> $GITHUB_STEP_SUMMARY

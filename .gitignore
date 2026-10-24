@@ -13,6 +13,12 @@ ENV/
 scratch/
 .agents/
 
+# Node & Build
+node_modules/
+www/
+ios/App/build/
+ios/App/Pods/
+
 # Sistema y Editores
 .DS_Store
 Thumbs.db

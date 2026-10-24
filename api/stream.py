@@ -36,18 +36,18 @@ class AudioStreamService:
         if clean_id in cls._cache:
             return cls._cache[clean_id]
 
-        # 2. Estrategia Primaria: API Invidious de alta velocidad y libre de bloqueos de IP
-        resultado = cls._resolver_via_invidious(clean_id)
-        if resultado and resultado.get("audioUrl"):
-            cls._guardar_en_cache(clean_id, resultado)
-            return resultado
-
-        # 3. Estrategia Secundaria: yt-dlp con cliente VisionOS (Apple)
+        # 2. Estrategia Primaria Inmediata: yt-dlp con cliente VisionOS / Android nativo de Apple
         if yt_dlp:
             resultado_ytdlp = cls._resolver_via_ytdlp(clean_id)
             if resultado_ytdlp and resultado_ytdlp.get("audioUrl"):
                 cls._guardar_en_cache(clean_id, resultado_ytdlp)
                 return resultado_ytdlp
+
+        # 3. Estrategia Secundaria de Fallback: Invidious con timeout estricto (1.5s)
+        resultado = cls._resolver_via_invidious(clean_id)
+        if resultado and resultado.get("audioUrl"):
+            cls._guardar_en_cache(clean_id, resultado)
+            return resultado
 
         return None
 
@@ -73,7 +73,7 @@ class AudioStreamService:
             try:
                 url = f"{base}/api/v1/videos/{video_id}"
                 req = urllib.request.Request(url, headers=headers)
-                with urllib.request.urlopen(req, timeout=4) as resp:
+                with urllib.request.urlopen(req, timeout=1.5) as resp:
                     data = json.loads(resp.read().decode("utf-8"))
                     title = data.get("title", "")
                     formats = data.get("adaptiveFormats", [])

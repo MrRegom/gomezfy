@@ -227,19 +227,20 @@ export class AudioEngine {
     this._emit('stateChange', this.currentState);
     this._configurarMediaSession(track);
 
-    // 1. PRIME (Síncrono en el evento del usuario para satisfacer la política de activación de iOS Safari)
+    // 1. PRIME (Síncrono durante el toque del usuario para asegurar la activación permanente de audio en iOS)
     if (this.audioElement) {
-      // Audio silencioso mínimo en formato WAV (44 bytes)
+      // Audio silencioso mínimo en bucle para que WebKit mantenga la sesión de audio abierta y viva
+      this.audioElement.loop = true;
       this.audioElement.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=';
       this.audioElement.play().catch(() => {});
     }
 
-    // Detener cualquier reproducción previa de YouTube iframe para evitar interferencia en iOS
+    // Detener cualquier reproducción previa de YouTube iframe para evitar colisiones
     if (this.ytPlayer && this.ytPlayer.stopVideo) {
       try { this.ytPlayer.stopVideo(); } catch (_) {}
     }
 
-    // 2. Obtener stream nativo .m4a desde Vercel o fallback
+    // 2. Obtener stream nativo .m4a desde Vercel
     let audioUrl = null;
     try {
       const resp = await fetch(`/api/stream?id=${encodeURIComponent(videoId)}`);
@@ -253,28 +254,11 @@ export class AudioEngine {
       console.warn('[Gomezfy API stream]:', err.message);
     }
 
-    // Fallback de cliente directo con CORS
-    if (!audioUrl) {
-      try {
-        const directResp = await fetch(`https://invidious.f5.si/api/v1/videos/${encodeURIComponent(videoId)}`);
-        if (directResp.ok) {
-          const dData = await directResp.json();
-          const formats = dData.adaptiveFormats || [];
-          const best = formats.find(f => (f.type && f.type.includes('audio/mp4')) || f.container === 'm4a')
-            || formats.find(f => f.type && f.type.includes('audio'));
-          if (best && best.url) {
-            audioUrl = best.url;
-          }
-        }
-      } catch (errFallback) {
-        console.warn('[Gomezfy Direct fallback]:', errFallback.message);
-      }
-    }
-
-    // 3. SWAP: Reproducir EXCLUSIVAMENTE en el elemento <audio> nativo de iOS
+    // 3. SWAP: Conmutar la fuente en el elemento nativo ya activado
     if (audioUrl && this.currentTrack && this.currentTrack.id === videoId) {
       console.info('[Gomezfy Engine]: Reproduciendo audio nativo m4a en segundo plano para iOS.');
       this.isUsingNativeAudio = true;
+      this.audioElement.loop = false;
       this.audioElement.src = audioUrl;
 
       try {
@@ -285,11 +269,19 @@ export class AudioEngine {
         return;
       } catch (errPlay) {
         console.warn('[Audio Nativo Play Error]:', errPlay);
+        // Reintentar reproducción inmediata en el elemento nativo
+        try {
+          await this.audioElement.play();
+          this.currentState = PlaybackState.PLAYING;
+          this._actualizarMediaSessionState('playing');
+          this._emit('stateChange', this.currentState);
+          return;
+        } catch (_) {}
       }
     }
 
-    // 4. Último recurso (solo si no se pudo obtener ningún stream de audio nativo)
-    console.warn('[Gomezfy Engine]: Fallback a YouTube Iframe.');
+    // 4. Último recurso (solo escritorio o cuando no se requiere segundo plano estricto)
+    console.warn('[Gomezfy Engine]: Fallback secundario a YouTube Iframe.');
     this.isUsingNativeAudio = false;
     this._reproducirConYouTube(videoId, track);
   }

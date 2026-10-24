@@ -1,0 +1,43 @@
+name: Compilar iOS App (Gomezfy)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-ios:
+    runs-on: macos-14
+    steps:
+      - name: Checkout Repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Sincronizar proyecto iOS
+        run: npm run sync:ios
+
+      - name: Compilar App con Xcode (Simulador / Distribución)
+        run: |
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace \
+                     -scheme App \
+                     -configuration Release \
+                     -sdk iphonesimulator \
+                     -derivedDataPath build \
+                     CODE_SIGN_IDENTITY="" \
+                     CODE_SIGNING_REQUIRED=NO \
+                     CODE_SIGNING_ALLOWED=NO
+
+      - name: Subir Artifact de la App iOS
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gomezfy-iOS-App
+          path: ios/App/build/Build/Products/Release-iphonesimulator/App.app

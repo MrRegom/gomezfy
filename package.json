@@ -1,0 +1,29 @@
+{
+  "name": "gomezfy",
+  "version": "1.0.0",
+  "description": "Reproductor de música estilo Spotify diseñado para iPhone (PWA Standalone), con máscara sobre YouTube sin anuncios, buscador en vivo, letras sincronizadas y soporte de perfiles aislados (Papá / Hijo).",
+  "main": "sw.js",
+  "scripts": {
+    "build": "node build_www.js",
+    "sync:ios": "node build_www.js && npx cap sync ios",
+    "open:ios": "npx cap open ios",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MrRegom/gomezfy.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/MrRegom/gomezfy/issues"
+  },
+  "homepage": "https://github.com/MrRegom/gomezfy#readme",
+  "dependencies": {
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/ios": "^8.5.3"
+  }
+}

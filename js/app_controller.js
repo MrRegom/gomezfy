@@ -105,7 +105,8 @@ export class AppController {
   _vincularEventosAudio() {
     this.audio.on('stateChange', (state) => {
       const isPlaying = (state === PlaybackState.PLAYING);
-      this._actualizarBotonPlayPause(isPlaying);
+      const isBuffering = (state === PlaybackState.BUFFERING || state === PlaybackState.LOADING);
+      this._actualizarBotonPlayPause(isPlaying, isBuffering);
     });
 
     this.audio.on('timeUpdate', ({ currentTime, duration }) => {
@@ -435,22 +436,28 @@ export class AppController {
     }
   }
 
-  _actualizarBotonPlayPause(isPlaying) {
-    this.dom.btnMiniPlayPause.textContent = isPlaying ? '⏸' : '▶';
+  _actualizarBotonPlayPause(isPlaying, isBuffering = false) {
+    const showPause = isPlaying || isBuffering;
+    this.dom.btnMiniPlayPause.textContent = showPause ? '⏸' : '▶';
     if (this.dom.svgPlayIcon && this.dom.svgPauseIcon) {
-      this.dom.svgPlayIcon.style.display = isPlaying ? 'none' : 'block';
-      this.dom.svgPauseIcon.style.display = isPlaying ? 'block' : 'none';
+      this.dom.svgPlayIcon.style.display = showPause ? 'none' : 'block';
+      this.dom.svgPauseIcon.style.display = showPause ? 'block' : 'none';
+    }
+    if (isBuffering) {
+      this.dom.btnModalPlayPause.classList.add('pulse-loading');
+    } else {
+      this.dom.btnModalPlayPause.classList.remove('pulse-loading');
     }
   }
 
   togglePlayPause() {
     if (navigator.vibrate) navigator.vibrate(8);
-    const currentlyPlaying = (this.audio.currentState === PlaybackState.PLAYING);
+    const isCurrentlyActive = (this.audio.currentState === PlaybackState.PLAYING || this.audio.currentState === PlaybackState.BUFFERING);
     
-    // Conmutación inmediata en la interfaz sin esperar la respuesta del reproductor
-    this._actualizarBotonPlayPause(!currentlyPlaying);
+    // Conmutación visual inmediata e intuitiva estilo Spotify
+    this._actualizarBotonPlayPause(!isCurrentlyActive);
 
-    if (currentlyPlaying) {
+    if (isCurrentlyActive) {
       this.audio.pause();
     } else {
       this.audio.play();

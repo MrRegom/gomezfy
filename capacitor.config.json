@@ -1,0 +1,12 @@
+{
+  "appId": "com.gomezfy.music",
+  "appName": "Gomezfy",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "ios": {
+    "contentInset": "always"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

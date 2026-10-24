@@ -17,9 +17,11 @@ jobs:
         with:
           node-version: 20
 
-      - name: Preparar compilación web
+      - name: Instalar dependencias y sincronizar Capacitor
         run: |
+          npm ci || npm install
           node build_www.js
+          npx cap sync ios
           mkdir -p ios/App/App/public
           cp -r www/* ios/App/App/public/
 

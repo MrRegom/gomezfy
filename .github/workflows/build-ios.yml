@@ -28,7 +28,7 @@ jobs:
           set -o pipefail
           xcodebuild build \
                      -project App.xcodeproj \
-                     -scheme App \
+                     -target App \
                      -configuration Release \
                      -sdk iphoneos \
                      -derivedDataPath build \
@@ -36,7 +36,7 @@ jobs:
                      CODE_SIGNING_REQUIRED="NO" \
                      CODE_SIGN_IDENTITY="" \
                      DEVELOPMENT_TEAM="" \
-                     PROVISIONING_PROFILE_SPECIFIER="" 2>&1 | tee xcode.log || { echo "=== ERROR DETALLADO DE XCODE ==="; tail -n 80 xcode.log; exit 1; }
+                     PROVISIONING_PROFILE_SPECIFIER=""
 
       - name: Empaquetar como Gomezfy.ipa para Sideloadly
         run: |

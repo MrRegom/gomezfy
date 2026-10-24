@@ -193,11 +193,20 @@ class handler(BaseHTTPRequestHandler):
 
         resultado = AudioStreamService.obtener_url_audio(video_id)
         if resultado and resultado.get("audioUrl"):
-            respuesta = json.dumps({"status": "success", "stream": resultado}, ensure_ascii=False)
+            respuesta = json.dumps({
+                "status": "success",
+                "version": "v2.1-cookies",
+                "stream": resultado
+            }, ensure_ascii=False)
             self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Cache-Control", "private, no-cache, no-store, must-revalidate")
+            self.end_headers()
         else:
             respuesta = json.dumps({
                 "status": "error",
+                "version": "v2.1-cookies",
                 "message": "No se pudo extraer flujo de audio.",
                 "debug": {
                     "ytdlp": AudioStreamService.ytdlp_error,
@@ -206,9 +215,8 @@ class handler(BaseHTTPRequestHandler):
                 }
             }, ensure_ascii=False)
             self.send_response(200)
-
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Cache-Control", "public, max-age=1800")
-        self.end_headers()
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+            self.end_headers()
         self.wfile.write(respuesta.encode("utf-8"))

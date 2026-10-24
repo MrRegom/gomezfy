@@ -110,7 +110,7 @@ class AudioStreamService:
     @classmethod
     def _resolver_via_ytdlp(cls, video_id: str) -> Optional[Dict[str, Any]]:
         ydl_opts = {
-            'format': 'bestaudio[ext=m4a]/bestaudio/best',
+            'format': 'ba/b',
             'quiet': True,
             'no_warnings': True,
             'extract_flat': False,
@@ -118,8 +118,8 @@ class AudioStreamService:
             'socket_timeout': 6,
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['visionos', 'android'],
-                    'player_skip': ['web', 'mweb', 'web_creator']
+                    'player_client': ['android_vr', 'android'],
+                    'player_skip': ['web', 'web_creator']
                 }
             }
         }
@@ -133,7 +133,7 @@ class AudioStreamService:
                         "title": info.get('title', ''),
                         "audioUrl": info['url'],
                         "duration": info.get('duration', 0),
-                        "format": info.get('ext', 'm4a')
+                        "format": info.get('ext', 'mp4')
                     }
         except Exception as e:
             cls.last_error = f"yt_dlp: {e}"

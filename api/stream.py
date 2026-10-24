@@ -36,18 +36,12 @@ class AudioStreamService:
         if clean_id in cls._cache:
             return cls._cache[clean_id]
 
-        # 2. Estrategia Primaria Inmediata: yt-dlp con cliente VisionOS / Android nativo de Apple
+        # 2. Estrategia Primaria: yt-dlp con android_vr
         if yt_dlp:
             resultado_ytdlp = cls._resolver_via_ytdlp(clean_id)
             if resultado_ytdlp and resultado_ytdlp.get("audioUrl"):
                 cls._guardar_en_cache(clean_id, resultado_ytdlp)
                 return resultado_ytdlp
-
-        # 3. Estrategia Secundaria de Fallback: Invidious con timeout estricto (1.5s)
-        resultado = cls._resolver_via_invidious(clean_id)
-        if resultado and resultado.get("audioUrl"):
-            cls._guardar_en_cache(clean_id, resultado)
-            return resultado
 
         return None
 

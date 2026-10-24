@@ -67,10 +67,10 @@ jobs:
           path: Gomezfy.ipa
           retention-days: 14
 
-      - name: Diagnóstico en caso de error
-        if: failure()
-        run: |
-          echo "### Log detallado de xcodebuild" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          tail -n 80 ios/App/xcodebuild.log >> $GITHUB_STEP_SUMMARY 2>/dev/null || true
-          echo '```' >> $GITHUB_STEP_SUMMARY
+      - name: Subir log de compilacion
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-compilation-log
+          path: ios/App/xcodebuild.log
+          retention-days: 7

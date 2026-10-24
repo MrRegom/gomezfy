@@ -18,6 +18,17 @@ try:
 except ImportError:
     yt_dlp = None
 
+try:
+    from .cookies_data import YOUTUBE_COOKIES_TEXT
+except ImportError:
+    try:
+        from cookies_data import YOUTUBE_COOKIES_TEXT
+    except ImportError:
+        try:
+            from api.cookies_data import YOUTUBE_COOKIES_TEXT
+        except ImportError:
+            YOUTUBE_COOKIES_TEXT = ""
+
 logger = logging.getLogger(__name__)
 
 
@@ -118,15 +129,14 @@ class AudioStreamService:
         if os.path.exists(tmp_cookie) and os.path.getsize(tmp_cookie) > 100:
             return tmp_cookie
 
-        base_dir = Path(__file__).parent
-        src_cookie = base_dir / "youtube_cookies.txt"
-        if src_cookie.exists():
+        if YOUTUBE_COOKIES_TEXT:
             try:
-                shutil.copyfile(src_cookie, tmp_cookie)
+                with open(tmp_cookie, "w", encoding="utf-8") as f:
+                    f.write(YOUTUBE_COOKIES_TEXT)
                 return tmp_cookie
             except Exception as e:
-                logger.warning(f"Error copiando cookies a {tmp_dir}: {e}")
-                return str(src_cookie)
+                logger.warning(f"Error escribiendo cookies a {tmp_cookie}: {e}")
+
         return None
 
     @classmethod

@@ -17,6 +17,11 @@ jobs:
           mkdir -p ios/App/App/public
           cp -r css js icons index.html manifest.json sw.js ios/App/App/public/
 
+      - name: Resolver dependencias Swift Package Manager
+        run: |
+          cd ios/App
+          xcodebuild -resolvePackageDependencies -project App.xcodeproj
+
       - name: Compilar App con Xcode (ARM64 para iPhone)
         run: |
           cd ios/App
@@ -25,8 +30,10 @@ jobs:
                      -scheme App \
                      -configuration Release \
                      -destination "generic/platform=iOS" \
-                     -xcconfig ../ci.xcconfig \
-                     -derivedDataPath build
+                     -derivedDataPath build \
+                     CODE_SIGNING_ALLOWED="NO" \
+                     CODE_SIGNING_REQUIRED="NO" \
+                     CODE_SIGN_IDENTITY=""
 
       - name: Empaquetar como Gomezfy.ipa para Sideloadly
         run: |

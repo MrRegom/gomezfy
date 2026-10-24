@@ -12,35 +12,28 @@ jobs:
       - name: Checkout Repositorio
         uses: actions/checkout@v4
 
-      - name: Configurar Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Instalar dependencias
-        run: npm install
-
-      - name: Copiar archivos web a iOS
+      - name: Actualizar assets web directamente en proyecto Xcode
         run: |
-          node build_www.js
-          npx cap copy ios
+          mkdir -p ios/App/App/public
+          cp -r css js icons index.html manifest.json sw.js ios/App/App/public/
 
-      - name: Compilar App con Xcode (ARM64 para iPhone Físico)
+      - name: Compilar App con Xcode (ARM64 para iPhone)
         run: |
           cd ios/App
-          xcodebuild -project App.xcodeproj \
+          xcodebuild build \
+                     -project App.xcodeproj \
                      -scheme App \
                      -configuration Release \
-                     -sdk iphoneos \
+                     -destination "generic/platform=iOS" \
                      -derivedDataPath build \
-                     CODE_SIGN_IDENTITY="" \
-                     CODE_SIGNING_REQUIRED=NO \
-                     CODE_SIGNING_ALLOWED=NO
+                     CODE_SIGNING_ALLOWED="NO" \
+                     CODE_SIGNING_REQUIRED="NO" \
+                     CODE_SIGN_IDENTITY=""
 
-      - name: Empaquetar como Gomezfy.ipa
+      - name: Empaquetar como Gomezfy.ipa para Sideloadly
         run: |
           cd ios/App
-          mkdir Payload
+          mkdir -p Payload
           cp -r build/Build/Products/Release-iphoneos/App.app Payload/
           zip -r ../../Gomezfy.ipa Payload
           cd ../..

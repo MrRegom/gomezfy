@@ -6,6 +6,9 @@ para garantizar reproducción ininterrumpida con pantalla bloqueada en iOS (iPho
 from http.server import BaseHTTPRequestHandler
 import json
 import logging
+import os
+import shutil
+from pathlib import Path
 import urllib.parse
 import urllib.request
 from typing import Dict, Any, Optional
@@ -36,12 +39,18 @@ class AudioStreamService:
         if clean_id in cls._cache:
             return cls._cache[clean_id]
 
-        # 2. Estrategia Primaria: yt-dlp con android_vr
+        # 2. Estrategia Primaria: yt-dlp con android_vr y cookies
         if yt_dlp:
             resultado_ytdlp = cls._resolver_via_ytdlp(clean_id)
             if resultado_ytdlp and resultado_ytdlp.get("audioUrl"):
                 cls._guardar_en_cache(clean_id, resultado_ytdlp)
                 return resultado_ytdlp
+
+        # 3. Estrategia Secundaria: Fallback resiliente a Invidious
+        resultado_invidious = cls._resolver_via_invidious(clean_id)
+        if resultado_invidious and resultado_invidious.get("audioUrl"):
+            cls._guardar_en_cache(clean_id, resultado_invidious)
+            return resultado_invidious
 
         return None
 
@@ -102,7 +111,27 @@ class AudioStreamService:
         return None
 
     @classmethod
+    def _obtener_ruta_cookies(cls) -> Optional[str]:
+        """Prepara las cookies en /tmp (único directorio con permisos de escritura en Vercel/AWS Lambda)."""
+        tmp_dir = "/tmp" if os.path.exists("/tmp") else os.environ.get("TEMP", "/tmp")
+        tmp_cookie = os.path.join(tmp_dir, "youtube_cookies.txt")
+        if os.path.exists(tmp_cookie) and os.path.getsize(tmp_cookie) > 100:
+            return tmp_cookie
+
+        base_dir = Path(__file__).parent
+        src_cookie = base_dir / "youtube_cookies.txt"
+        if src_cookie.exists():
+            try:
+                shutil.copyfile(src_cookie, tmp_cookie)
+                return tmp_cookie
+            except Exception as e:
+                logger.warning(f"Error copiando cookies a {tmp_dir}: {e}")
+                return str(src_cookie)
+        return None
+
+    @classmethod
     def _resolver_via_ytdlp(cls, video_id: str) -> Optional[Dict[str, Any]]:
+        cookie_path = cls._obtener_ruta_cookies()
         ydl_opts = {
             'format': 'ba/b',
             'quiet': True,
@@ -112,11 +141,14 @@ class AudioStreamService:
             'socket_timeout': 6,
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['android_vr', 'android'],
-                    'player_skip': ['web', 'web_creator']
+                    'player_client': ['android_vr', 'android', 'web'],
+                    'player_skip': ['web_creator']
                 }
             }
         }
+        if cookie_path:
+            ydl_opts['cookiefile'] = cookie_path
+
         url = f"https://www.youtube.com/watch?v={video_id}"
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:

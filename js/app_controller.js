@@ -8,6 +8,7 @@ import { SearchService } from './search_service.js';
 import { StorageService } from './storage_service.js';
 import { VideoPlayer } from './video_player.js';
 import { ICONS } from './ui_icons.js';
+import { PARACAS_ALBUM, NOMAD_WORSHIP_FEATURED } from './featured_collections.js';
 
 export class AppController {
   constructor() {
@@ -46,42 +47,62 @@ export class AppController {
     this._configurarEventosCategorias();
     this._configurarEventosBiblioteca();
     this._configurarEventosReproductor();
-    this._configurarEventosDestacadoNomad();
+    this._configurarEventosDestacados();
 
     // Cargar feed inicial de tendencias
     this.cargarFeedPorCategoria('tendencias', 'Tendencias');
   }
 
-  _configurarEventosDestacadoNomad() {
-    const btnPlay = document.getElementById('btnPlayNomadLatest');
-    const btnBrowse = document.getElementById('btnBrowseNomad');
+  _configurarEventosDestacados() {
+    // Tarjeta 1: Nomad Worship
+    const btnPlayNomad = document.getElementById('btnPlayNomadLatest');
+    const btnBrowseNomad = document.getElementById('btnBrowseNomad');
 
-    const nomadLatestVideo = {
-      id: 'p34Oop-WnjQ',
-      title: 'NOMAD WORSHIP - Un Paso (Video Oficial)',
-      channel: 'NOMAD WORSHIP',
-      channelAvatar: 'https://i.ytimg.com/vi/p34Oop-WnjQ/hq720.jpg',
-      thumbnail: 'https://i.ytimg.com/vi/p34Oop-WnjQ/hq720.jpg',
-      duration: '4:49',
-      views: 'Video Oficial',
-      published: 'Lanzamiento'
-    };
-
-    if (btnPlay) {
-      btnPlay.addEventListener('click', () => {
-        this.videoPlayer.cargarVideo(nomadLatestVideo);
-        StorageService.guardarEnHistorial(nomadLatestVideo);
+    if (btnPlayNomad) {
+      btnPlayNomad.addEventListener('click', () => {
+        const video = NOMAD_WORSHIP_FEATURED.latestVideo;
+        this.videoPlayer.cargarVideo(video);
+        StorageService.guardarEnHistorial(video);
+        this.videoPlayer.actualizarBotonFavorito(StorageService.esFavorito(video.id));
       });
     }
 
-    if (btnBrowse) {
-      btnBrowse.addEventListener('click', () => {
+    if (btnBrowseNomad) {
+      btnBrowseNomad.addEventListener('click', () => {
         this.cargarFeedPorCategoria('nomad worship', 'NOMAD WORSHIP - Videos y Discografía');
         this.categoryChips.forEach((c) => {
           c.classList.toggle('active', c.dataset.query === 'nomad worship');
         });
       });
     }
+
+    // Tarjeta 2: Paracas - Sueños en el Aire (Álbum 1978 EMI-Odeón)
+    const btnPlayParacas = document.getElementById('btnPlayParacasAlbum');
+    const btnBrowseParacas = document.getElementById('btnBrowseParacas');
+
+    if (btnPlayParacas) {
+      btnPlayParacas.addEventListener('click', () => {
+        const primerTrack = PARACAS_ALBUM.tracks[0];
+        this.videoPlayer.cargarVideo(primerTrack, PARACAS_ALBUM.playlistId);
+        StorageService.guardarEnHistorial(primerTrack);
+        this.videoPlayer.actualizarBotonFavorito(StorageService.esFavorito(primerTrack.id));
+      });
+    }
+
+    if (btnBrowseParacas) {
+      btnBrowseParacas.addEventListener('click', () => {
+        this.cargarAlbumParacas();
+      });
+    }
+  }
+
+  cargarAlbumParacas() {
+    this.cambiarVista('feed');
+    this.sectionTitle.textContent = 'Paracas - Sueños en el aire (Álbum 1978 EMI-Odeón)';
+    this.categoryChips.forEach((c) => {
+      c.classList.toggle('active', c.dataset.query === 'paracas');
+    });
+    this.renderizarListaVideos(PARACAS_ALBUM.tracks, this.videoGrid, PARACAS_ALBUM.playlistId);
   }
 
   _configurarEventosNavegacion() {
@@ -162,7 +183,12 @@ export class AppController {
         const nombre = chip.textContent;
         this.inputSearch.value = '';
         this.btnClearSearch.style.display = 'none';
-        this.cargarFeedPorCategoria(query, nombre);
+
+        if (query === 'paracas') {
+          this.cargarAlbumParacas();
+        } else {
+          this.cargarFeedPorCategoria(query, nombre);
+        }
       });
     });
   }
@@ -271,7 +297,7 @@ export class AppController {
     }
   }
 
-  renderizarListaVideos(videos, contenedor) {
+  renderizarListaVideos(videos, contenedor, defaultPlaylistId = null) {
     contenedor.innerHTML = '';
 
     if (!videos || videos.length === 0) {
@@ -286,12 +312,12 @@ export class AppController {
     }
 
     videos.forEach((video) => {
-      const card = this._crearTarjetaVideo(video);
+      const card = this._crearTarjetaVideo(video, defaultPlaylistId);
       contenedor.appendChild(card);
     });
   }
 
-  _crearTarjetaVideo(video) {
+  _crearTarjetaVideo(video, defaultPlaylistId = null) {
     const card = document.createElement('article');
     card.className = 'video-card';
     card.setAttribute('role', 'button');
@@ -328,7 +354,8 @@ export class AppController {
 
     // Eventos de selección
     const reproducir = () => {
-      this.videoPlayer.cargarVideo(video);
+      const playlist = video.playlistId || defaultPlaylistId || (PARACAS_ALBUM.tracks.some(t => t.id === video.id) ? PARACAS_ALBUM.playlistId : null);
+      this.videoPlayer.cargarVideo(video, playlist);
       StorageService.guardarEnHistorial(video);
       const esFav = StorageService.esFavorito(video.id);
       this.videoPlayer.actualizarBotonFavorito(esFav);

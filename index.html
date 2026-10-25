@@ -53,6 +53,7 @@
     <div class="categories-carousel" role="tablist" aria-label="Categorías">
       <button type="button" class="category-chip active" data-query="tendencias" role="tab">Tendencias</button>
       <button type="button" class="category-chip chip-nomad" data-query="nomad worship" role="tab">Nomad Worship</button>
+      <button type="button" class="category-chip chip-paracas" data-query="paracas" role="tab">Paracas - Álbum 1978</button>
       <button type="button" class="category-chip" data-query="musica en vivo" role="tab">Música</button>
       <button type="button" class="category-chip" data-query="podcast completo" role="tab">Podcasts</button>
       <button type="button" class="category-chip" data-query="tecnologia" role="tab">Tecnología</button>
@@ -72,26 +73,52 @@
     <!-- Vista 1: Feed Principal / Resultados -->
     <section class="app-view active" id="viewFeed">
       
-      <!-- Tarjeta Destacada Permanente: Nomad Worship -->
-      <article class="featured-artist-card" id="featuredNomadCard" aria-label="Grupo destacado: Nomad Worship">
-        <div class="featured-card-content">
-          <span class="featured-card-tag">Artista Destacado</span>
-          <h2 class="featured-card-title">NOMAD WORSHIP</h2>
-          <p class="featured-card-subtitle">Música oficial, sesiones en vivo y adoración.</p>
-          <div class="featured-card-actions">
-            <button type="button" class="btn-featured-play" id="btnPlayNomadLatest" title="Reproducir último lanzamiento">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-              <span>Reproducir "Un Paso"</span>
-            </button>
-            <button type="button" class="btn-featured-browse" id="btnBrowseNomad" title="Ver catálogo completo de Nomad Worship">
-              <span>Ver todos los videos</span>
-            </button>
+      <!-- Contenedor de Colecciones Destacadas Permanentes -->
+      <section class="featured-collections-grid" aria-label="Colecciones y artistas destacados">
+        
+        <!-- Tarjeta 1: Nomad Worship -->
+        <article class="featured-artist-card card-nomad" id="featuredNomadCard" aria-label="Grupo destacado: Nomad Worship">
+          <div class="featured-card-content">
+            <span class="featured-card-tag tag-nomad">Artista Destacado</span>
+            <h2 class="featured-card-title">NOMAD WORSHIP</h2>
+            <p class="featured-card-subtitle">Música oficial, sesiones en vivo y adoración.</p>
+            <div class="featured-card-actions">
+              <button type="button" class="btn-featured-play" id="btnPlayNomadLatest" title="Reproducir último lanzamiento">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                <span>Reproducir "Un Paso"</span>
+              </button>
+              <button type="button" class="btn-featured-browse" id="btnBrowseNomad" title="Ver catálogo completo de Nomad Worship">
+                <span>Ver videos</span>
+              </button>
+            </div>
           </div>
-        </div>
-        <div class="featured-card-media" id="featuredNomadCover">
-          <img src="https://i.ytimg.com/vi/p34Oop-WnjQ/hq720.jpg" alt="Nomad Worship Portada" class="featured-cover-img" loading="lazy">
-        </div>
-      </article>
+          <div class="featured-card-media">
+            <img src="https://i.ytimg.com/vi/p34Oop-WnjQ/hq720.jpg" alt="Nomad Worship Portada" class="featured-cover-img" loading="lazy">
+          </div>
+        </article>
+
+        <!-- Tarjeta 2: Paracas - Sueños en el Aire (Álbum 1978 EMI-Odeón) -->
+        <article class="featured-artist-card card-paracas" id="featuredParacasCard" aria-label="Álbum destacado: Paracas - Sueños en el aire">
+          <div class="featured-card-content">
+            <span class="featured-card-tag tag-paracas">Álbum Histórico 1978</span>
+            <h2 class="featured-card-title">PARACAS - Sueños en el aire</h2>
+            <p class="featured-card-subtitle">Álbum de 7 canciones grabado en EMI - Odeón (1978).</p>
+            <div class="featured-card-actions">
+              <button type="button" class="btn-featured-play btn-paracas-play" id="btnPlayParacasAlbum" title="Reproducir álbum completo">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                <span>Reproducir Álbum</span>
+              </button>
+              <button type="button" class="btn-featured-browse" id="btnBrowseParacas" title="Ver las 7 canciones del álbum">
+                <span>Ver 7 Canciones</span>
+              </button>
+            </div>
+          </div>
+          <div class="featured-card-media">
+            <img src="https://i.ytimg.com/vi/t4IKvJrPyEY/hqdefault.jpg" alt="Paracas Sueños en el aire Portada" class="featured-cover-img" loading="lazy">
+          </div>
+        </article>
+
+      </section>
 
       <div class="feed-header-bar">
         <h2 class="section-heading" id="sectionTitle">Tendencias</h2>

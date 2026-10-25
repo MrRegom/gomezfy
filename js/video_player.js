@@ -18,10 +18,11 @@ export class VideoPlayer {
   }
 
   /**
-   * Carga y reproduce un video.
+   * Carga y reproduce un video o lista de reproducción.
    * @param {Object} video
+   * @param {string|null} [playlistId]
    */
-  cargarVideo(video) {
+  cargarVideo(video, playlistId = null) {
     if (!video || !video.id) return;
 
     this.currentVideo = video;
@@ -36,6 +37,10 @@ export class VideoPlayer {
       playsinline: '1',
       enablejsapi: '1'
     });
+
+    if (playlistId) {
+      params.set('list', playlistId);
+    }
 
     const embedUrl = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(video.id)}?${params.toString()}`;
 

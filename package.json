@@ -1,7 +1,7 @@
 {
-  "name": "gomezfy",
+  "name": "gomeztube",
   "version": "1.0.0",
-  "description": "Reproductor de música estilo Spotify diseñado para iPhone (PWA Standalone), con máscara sobre YouTube sin anuncios, buscador en vivo, letras sincronizadas y soporte de perfiles aislados (Papá / Hijo).",
+  "description": "Plataforma de reproducción de videos de YouTube sin comerciales, con Picture-in-Picture, feed de tendencias y modo teatro para iPhone, Android y Web.",
   "main": "sw.js",
   "scripts": {
     "build": "node build_www.js",

@@ -1,57 +1,56 @@
 """
-Endpoint Serverless para Vercel: Búsqueda de pistas reproducibles en YouTube.
-Aplica filtros estrictos para descartar videos oficiales con restricciones
-de inserción (código 150/101 de discográficas como VEVO/Warner/Sony) y garantizar
-que el 100% de los resultados mostrados sean inmediatamente reproducibles.
+Módulo Serverless para Vercel: Búsqueda y Feed de Videos de YouTube para GomezTube.
+Extrae metadatos ricos: ID, título, canal, avatar del canal, miniatura HQ,
+duración, conteo de reproducciones y fecha relativa de publicación.
 """
 from http.server import BaseHTTPRequestHandler
 import json
+import logging
 import re
 import urllib.parse
 import urllib.request
+from typing import List, Dict, Any
+
+logger = logging.getLogger(__name__)
 
 
-class YouTubeSearchEngine:
-    """Motor de búsqueda filtrado para entregar únicamente pistas reproducibles."""
+class YouTubeSearchService:
+    """Servicio de búsqueda y extracción de metadatos de videos de YouTube."""
+
+    DEFAULT_TRENDING_QUERY = "tendencias"
+    HEADERS = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        ),
+        "Accept-Language": "es-419,es;q=0.9,en;q=0.8",
+    }
 
     @classmethod
-    def buscar(cls, query: str, limite: int = 20) -> list:
-        if not query or len(query.strip()) < 2:
-            return []
+    def buscar(cls, query: str, limite: int = 24) -> List[Dict[str, Any]]:
+        """
+        Ejecuta la búsqueda en YouTube. Si el query está vacío,
+        devuelve videos en tendencia en español.
+        """
+        q_limpio = query.strip() if query else cls.DEFAULT_TRENDING_QUERY
+        if not q_limpio:
+            q_limpio = cls.DEFAULT_TRENDING_QUERY
 
-        q_limpio = query.strip()
-        resultados = cls._ejecutar_extraccion(q_limpio, limite)
+        return cls._extraer_videos(q_limpio, limite)
 
-        # Si tras filtrar quedan pocos resultados, complementar buscando con sufijo 'audio'
-        if len(resultados) < 10:
-            complementarios = cls._ejecutar_extraccion(f"{q_limpio} audio", limite)
-            ids_existentes = {r["id"] for r in resultados}
-            for comp in complementarios:
-                if comp["id"] not in ids_existentes:
-                    resultados.append(comp)
-                    if len(resultados) >= limite:
-                        break
+    @classmethod
+    def _extraer_videos(cls, query: str, limite: int) -> List[Dict[str, Any]]:
+        query_encoded = urllib.parse.quote(query)
+        # sp=EgIQAQ%253D%253D filtra exclusivamente por videos (descarta canales y listas vacías)
+        url = f"https://www.youtube.com/results?search_query={query_encoded}&sp=EgIQAQ%253D%253D"
 
-        return resultados[:limite]
-
-    @staticmethod
-    def _ejecutar_extraccion(query: str, limite: int) -> list:
-        query_codificada = urllib.parse.quote(query)
-        url = f"https://www.youtube.com/results?search_query={query_codificada}&sp=EgIQAQ%253D%253D"
-        headers = {
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/124.0.0.0 Safari/537.36"
-            ),
-            "Accept-Language": "es-419,es;q=0.9,en;q=0.8",
-        }
-
-        req = urllib.request.Request(url, headers=headers)
+        req = urllib.request.Request(url, headers=cls.HEADERS)
         try:
             with urllib.request.urlopen(req, timeout=6) as resp:
                 html = resp.read().decode("utf-8", errors="ignore")
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error HTTP consultando YouTube: {e}")
             return []
 
         patron = r"var ytInitialData = ({.*?});</script>"
@@ -72,7 +71,8 @@ class YouTubeSearchEngine:
                 .get("sectionListRenderer", {})
                 .get("contents", [])
             )
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error parseando JSON de YouTube: {e}")
             return []
 
         items_render = []
@@ -80,80 +80,92 @@ class YouTubeSearchEngine:
             if "itemSectionRenderer" in sec:
                 items_render.extend(sec["itemSectionRenderer"].get("contents", []))
 
-        resultados = []
+        resultados: List[Dict[str, Any]] = []
         for item in items_render:
-            if "videoRenderer" in item:
-                v = item["videoRenderer"]
-                vid_id = v.get("videoId")
-                if not vid_id:
-                    continue
+            if "videoRenderer" not in item:
+                continue
 
-                titulo = v.get("title", {}).get("runs", [{}])[0].get("text", "Sin título")
+            v = item["videoRenderer"]
+            vid_id = v.get("videoId")
+            if not vid_id:
+                continue
 
-                # Detectar si el canal es un canal oficial de artista verificado
-                es_canal_artista_oficial = False
-                for badge in v.get("ownerBadges", []):
-                    badge_style = badge.get("metadataBadgeRenderer", {}).get("style")
-                    if badge_style == "BADGE_STYLE_TYPE_VERIFIED_ARTIST":
-                        es_canal_artista_oficial = True
-                        break
+            # 1. Título
+            titulo = v.get("title", {}).get("runs", [{}])[0].get("text", "Sin título")
 
-                # Comprobar si es un videoclip oficial restringido por discográficas
-                es_video_oficial_bloqueable = bool(
-                    re.search(r"official\s*(music)?\s*video|videoclip\s*oficial", titulo, re.IGNORECASE)
-                )
+            # 2. Canal
+            canal = "Canal"
+            runs_canal = (
+                v.get("ownerText", {}).get("runs")
+                or v.get("longBylineText", {}).get("runs")
+            )
+            if runs_canal:
+                canal = runs_canal[0].get("text", "Canal")
 
-                # FILTRO CRÍTICO: Los canales de artistas oficiales que suben "Official Video"
-                # bloquean la inserción (código 150/101). Descartamos estos para garantizar
-                # que solo mostremos versiones 100% reproducibles (Audio, Lyrics, Live, HQ).
-                if es_canal_artista_oficial and es_video_oficial_bloqueable:
-                    continue
+            # 3. Avatar del Canal
+            avatar_url = ""
+            channel_thumbs = (
+                v.get("channelThumbnailSupportedRenderers", {})
+                .get("channelThumbnailWithLinkRenderer", {})
+                .get("thumbnail", {})
+                .get("thumbnails", [])
+            )
+            if channel_thumbs:
+                avatar_url = channel_thumbs[0].get("url", "")
 
-                # Extraer nombre del canal / artista
-                canal = "Artista"
-                runs_canal = (
-                    v.get("ownerText", {}).get("runs")
-                    or v.get("longBylineText", {}).get("runs")
-                )
-                if runs_canal:
-                    canal = runs_canal[0].get("text", "Artista")
+            # 4. Miniatura del Video
+            thumbs = v.get("thumbnail", {}).get("thumbnails", [])
+            thumb_url = (
+                thumbs[-1].get("url")
+                if thumbs
+                else f"https://i.ytimg.com/vi/{vid_id}/hqdefault.jpg"
+            )
 
-                # Extraer portada
-                thumbs = v.get("thumbnail", {}).get("thumbnails", [])
-                thumb_url = (
-                    thumbs[-1].get("url")
-                    if thumbs
-                    else f"https://i.ytimg.com/vi/{vid_id}/hqdefault.jpg"
-                )
+            # 5. Duración
+            duracion = v.get("lengthText", {}).get("simpleText", "0:00")
 
-                # Extraer duración
-                duracion = v.get("lengthText", {}).get("simpleText", "0:00")
+            # 6. Vistas y Fecha de Publicación
+            vistas = v.get("viewCountText", {}).get("simpleText", "")
+            if not vistas:
+                short_views = v.get("shortViewCountText", {}).get("simpleText", "")
+                vistas = short_views if short_views else "Video"
 
-                resultados.append({
-                    "id": vid_id,
-                    "title": titulo,
-                    "artist": canal,
-                    "thumbnail": thumb_url,
-                    "duration": duracion,
-                })
+            publicado = v.get("publishedTimeText", {}).get("simpleText", "")
 
-                if len(resultados) >= limite:
-                    break
+            resultados.append({
+                "id": vid_id,
+                "title": titulo,
+                "channel": canal,
+                "channelAvatar": avatar_url,
+                "thumbnail": thumb_url,
+                "duration": duracion,
+                "views": vistas,
+                "published": publicado
+            })
+
+            if len(resultados) >= limite:
+                break
 
         return resultados
 
 
+YouTubeSearchEngine = YouTubeSearchService
+
+
 class handler(BaseHTTPRequestHandler):
-    """Manejador HTTP para la función Serverless de Vercel."""
+    """Manejador HTTP Serverless para Vercel Functions."""
 
     def do_GET(self):
         partes_url = urllib.parse.urlparse(self.path)
         params = urllib.parse.parse_qs(partes_url.query)
         query = params.get("q", [""])[0]
 
-        resultados = YouTubeSearchEngine.buscar(query)
+        resultados = YouTubeSearchService.buscar(query)
 
-        respuesta = json.dumps({"status": "success", "results": resultados}, ensure_ascii=False)
+        respuesta = json.dumps(
+            {"status": "success", "results": resultados},
+            ensure_ascii=False
+        )
 
         self.send_response(200)
         self.send_header("Content-Type", "application/json; charset=utf-8")

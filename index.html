@@ -2,245 +2,105 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Gomezfy Music</title>
+  <title>GomezTube - Videos sin Comerciales</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   
-  <!-- Configuración PWA para iOS iPhone (Standalone Pantalla Completa) -->
+  <!-- Configuración PWA para iOS iPhone y Android (Standalone Pantalla Completa) -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Gomezfy">
+  <meta name="apple-mobile-web-app-title" content="GomezTube">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
   <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#121212">
+  <meta name="theme-color" content="#0f0f0f">
 
-  <!-- Hojas de Estilo Spotify Native -->
+  <!-- Hoja de Estilo GomezTube Premium -->
   <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
 
-  <!-- Barra Superior -->
-  <header class="top-bar">
-    <div class="brand">
-      <span class="brand-icon">🎧</span>
-      <span>Gomezfy</span>
+  <!-- Barra Superior de Navegación -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand-badge" role="banner">
+        <span class="brand-logo-icon">▶</span>
+        <span class="brand-logo-text">Gomez<span class="brand-logo-accent">Tube</span></span>
+      </div>
+
+      <div class="search-bar-wrapper">
+        <div class="search-input-box">
+          <span class="search-icon-prefix">🔍</span>
+          <input
+            type="search"
+            id="inputSearch"
+            class="search-input"
+            placeholder="Buscar en GomezTube sin anuncios..."
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="none"
+          >
+          <button type="button" id="btnClearSearch" class="btn-clear-search" style="display: none;" title="Limpiar búsqueda">✕</button>
+        </div>
+      </div>
     </div>
-    <div class="profile-pill" id="btnPerfilSelector" role="button" aria-label="Cambiar perfil">
-      <span id="txtPerfilAvatar">👨</span>
-      <span id="txtPerfilNombre">Papá</span>
+
+    <!-- Píldoras de Categorías Rápidas -->
+    <div class="categories-carousel" role="tablist" aria-label="Categorías">
+      <button type="button" class="category-chip active" data-query="tendencias" role="tab">🔥 Tendencias</button>
+      <button type="button" class="category-chip" data-query="musica en vivo" role="tab">🎵 Música</button>
+      <button type="button" class="category-chip" data-query="podcast completo" role="tab">🎙️ Podcasts</button>
+      <button type="button" class="category-chip" data-query="tecnologia inteligencia artificial" role="tab">💻 Tecnología</button>
+      <button type="button" class="category-chip" data-query="gameplay español" role="tab">🎮 Gaming</button>
+      <button type="button" class="category-chip" data-query="noticias en vivo" role="tab">📰 Noticias</button>
+      <button type="button" class="category-chip" data-query="documental español" role="tab">🌍 Documentales</button>
     </div>
   </header>
 
-  <!-- Píldoras de Filtros Rápidos (Estilo Spotify Mobile) -->
-  <div class="category-pills-bar">
-    <button type="button" class="category-pill active" data-genre="">Todas</button>
-    <button type="button" class="category-pill" data-genre="musica">Música</button>
-    <button type="button" class="category-pill" data-genre="rock">Rock</button>
-    <button type="button" class="category-pill" data-genre="urbano">Urbano</button>
-    <button type="button" class="category-pill" data-genre="pop">Pop</button>
-    <button type="button" class="category-pill" data-genre="cumbia">Cumbia</button>
-  </div>
+  <!-- Área de Reproducción de Video (Fijable o Desplazable) -->
+  <section class="video-theater-container hidden" id="playerSection" aria-label="Reproductor de video"></section>
+  <section class="video-theater-info hidden" id="playerInfoSection" aria-label="Información del video"></section>
 
-  <!-- Contenedor de Vistas -->
-  <main class="views-container">
+  <!-- Contenido Principal -->
+  <main class="main-content-layout">
     
-    <!-- Vista 1: Buscador -->
-    <section class="view-section active" id="viewSearch">
-      <div class="search-box-wrapper">
-        <input type="search" id="inputSearch" class="search-input" placeholder="¿Qué quieres escuchar hoy?" autocomplete="off" autocorrect="off" autocapitalize="none">
+    <!-- Vista 1: Feed Principal / Resultados -->
+    <section class="app-view active" id="viewFeed">
+      <div class="feed-header-bar">
+        <h2 class="section-heading" id="sectionTitle">Tendencias</h2>
+        <span class="badge-adfree">⚡ 100% Sin comerciales</span>
       </div>
-
-      <div class="quick-header-section" id="sectionHeaderQuick" style="display: none;">
-        <h3 class="section-title">Resultados</h3>
-      </div>
-
-      <div class="track-list" id="searchResultsList">
-        <div class="empty-search-state">
-          <div class="empty-search-icon">🔍</div>
-          <h3>Busca tus canciones favoritas</h3>
-          <p>Escribe el nombre de un artista, banda o canción para reproducir sin anuncios.</p>
-        </div>
-      </div>
+      <div class="video-cards-grid" id="videoGrid"></div>
     </section>
 
-    <!-- Vista 2: Mis Listas y Favoritos -->
-    <section class="view-section" id="viewPlaylists">
-      <div class="playlist-header-actions">
-        <h2>Tu Biblioteca</h2>
-        <button type="button" class="btn-primary" id="btnCrearLista">+ Crear Lista</button>
+    <!-- Vista 2: Biblioteca (Guardados e Historial) -->
+    <section class="app-view" id="viewLibrary">
+      <div class="library-header-bar">
+        <h2 class="section-heading">Tu Biblioteca</h2>
+        <button type="button" class="btn-text-danger" id="btnLimpiarHistorial" style="display: none;">🗑️ Vaciar Historial</button>
       </div>
-      <div class="playlist-grid" id="playlistGridContainer">
-        <!-- Generado dinámicamente -->
-      </div>
-      <div id="playlistTracksContainer" style="margin-top: 24px; display: none;">
-        <button type="button" class="btn-primary" id="btnVolverListas" style="background: var(--bg-card); color: #fff; margin-bottom: 12px;">← Volver a listas</button>
-        <h3 id="txtPlaylistNombre" style="margin-bottom: 12px;">Nombre Lista</h3>
-        <div class="track-list" id="playlistItemsList"></div>
-      </div>
-    </section>
 
-    <!-- Vista 3: Letras (Karaoke Completo) -->
-    <section class="view-section" id="viewLyrics">
-      <div class="lyrics-view-header">
-        <h2 style="font-size: 1.4rem;">Letra Sincronizada</h2>
-        <p id="txtLyricsTrackInfo" style="color: var(--text-muted); font-size: 0.85rem; margin-top: 4px;">Sin reproducción activa</p>
+      <div class="library-subtabs-row">
+        <button type="button" class="subtab-btn active" id="btnTabFavoritos">⭐ Guardados</button>
+        <button type="button" class="subtab-btn" id="btnTabHistorial">🕒 Historial</button>
       </div>
-      <div class="lyrics-container" id="lyricsContentList">
-        <p class="lyrics-line">Reproduce una pista para ver la letra en tiempo real.</p>
-      </div>
+
+      <div class="video-cards-grid" id="libraryGrid"></div>
     </section>
 
   </main>
 
-  <!-- Mini Player Flotante (Estilo Spotify Mobile) -->
-  <aside class="mini-player" id="miniPlayer" style="display: none;">
-    <div class="mini-left" id="miniInfoZone">
-      <img src="/icons/apple-touch-icon.png" alt="Portada" class="mini-thumb" id="miniThumb">
-      <div class="mini-text">
-        <div class="mini-title" id="miniTitle">Título</div>
-        <div class="mini-artist" id="miniArtist">Artista</div>
-      </div>
-    </div>
-    <div class="mini-controls">
-      <button type="button" class="mini-btn-action" id="btnMiniFavorite" title="Favorito">🤍</button>
-      <button type="button" class="mini-btn-play" id="btnMiniPlayPause" title="Reproducir/Pausar">▶</button>
-    </div>
-    <!-- Línea de progreso de 2px en la base del mini-player -->
-    <div class="mini-progress-track">
-      <div class="mini-progress-fill" id="miniProgressFill"></div>
-    </div>
-  </aside>
-
-  <!-- Barra Inferior de Navegación (Tabs Nativas Estilo Spotify) -->
-  <nav class="bottom-nav">
-    <div class="nav-item active" data-view="viewSearch">
-      <span class="nav-icon">🔍</span>
-      <span class="nav-label">Buscar</span>
-    </div>
-    <div class="nav-item" data-view="viewPlaylists">
-      <span class="nav-icon">📚</span>
-      <span class="nav-label">Tu Biblioteca</span>
-    </div>
-    <div class="nav-item" data-view="viewLyrics">
-      <span class="nav-icon">🎤</span>
-      <span class="nav-label">Letras</span>
-    </div>
+  <!-- Barra de Navegación Inferior Móvil (Estilo App Nativa) -->
+  <nav class="bottom-navigation-bar" aria-label="Navegación principal">
+    <button type="button" class="nav-tab-btn active" data-view="feed" title="Inicio y Explorar">
+      <span class="nav-tab-icon">🏠</span>
+      <span class="nav-tab-label">Inicio</span>
+    </button>
+    <button type="button" class="nav-tab-btn" data-view="library" title="Videos guardados e Historial">
+      <span class="nav-tab-icon">📁</span>
+      <span class="nav-tab-label">Biblioteca</span>
+    </button>
   </nav>
 
-  <!-- Modal Reproductor Completo (Estilo Spotify Mobile Exacto) -->
-  <div class="player-modal" id="playerModal">
-    <!-- Fondo ambiental difuminado -->
-    <div class="ambient-backdrop" id="ambientBackdrop"></div>
-
-    <div class="modal-header">
-      <button type="button" class="icon-btn-touch" id="btnCerrarModal" aria-label="Minimizar reproductor">⌄</button>
-      <div class="modal-header-meta">
-        <span class="header-pretitle">REPRODUCIENDO DE TU BÚSQUEDA</span>
-        <span class="header-subtitle" id="headerSongSubtitle">Gomezfy Sessions</span>
-      </div>
-      <button type="button" class="icon-btn-touch" id="btnModalAddPlaylist" aria-label="Agregar a playlist">➕</button>
-    </div>
-    
-    <div class="modal-cover-wrap">
-      <!-- Portada grande con bordes redondeados y sombra suave estilo Spotify -->
-      <div class="spotify-art-card">
-        <img src="/icons/icon-512.png" alt="Carátula" class="spotify-cover-img" id="modalCover">
-      </div>
-      <!-- Elemento HTML5 de Audio Nativo DOM para reproducción continua en segundo plano en iOS -->
-      <audio id="gomezfy-native-audio" playsinline webkit-playsinline preload="auto" style="display:none;"></audio>
-      <!-- Contenedor activo de YouTube como respaldo secundario -->
-      <div id="yt-player-container" class="yt-hidden-player"></div>
-    </div>
-
-    <!-- Información de la Canción y Acciones -->
-    <div class="modal-meta-row">
-      <div class="meta-texts">
-        <h2 class="song-title-main" id="modalTitle">Canción</h2>
-        <div class="artist-sub-row">
-          <span class="explicit-tag">E</span>
-          <span class="artist-name-main" id="modalArtist">Artista</span>
-        </div>
-      </div>
-      <div class="meta-side-actions">
-        <button type="button" class="icon-btn-touch btn-favorite-toggle" id="btnModalFavorite" aria-label="Marcar como favorita">🤍</button>
-      </div>
-    </div>
-
-    <!-- Scrubber con Línea Fina y Countdown Negativo -->
-    <div class="modal-scrubber-spotify">
-      <input type="range" class="spotify-seek-slider" id="modalSeekSlider" min="0" max="100" value="0" step="0.1">
-      <div class="time-labels-row">
-        <span id="lblCurrentTime">0:00</span>
-        <span id="lblTotalTime">-0:00</span>
-      </div>
-    </div>
-
-    <!-- Controles Principales de Reproducción (Botón Blanco Circular Grande) -->
-    <div class="spotify-controls-row">
-      <button type="button" class="control-btn" id="btnModalShuffle" aria-label="Aleatorio">
-        <span class="ctrl-icon">🔀</span>
-        <span class="ctrl-dot"></span>
-      </button>
-
-      <button type="button" class="control-btn btn-skip" id="btnModalPrev" aria-label="Pista anterior">
-        <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
-          <path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/>
-        </svg>
-      </button>
-
-      <!-- Botón Central Blanco Circular 64px con respuesta táctil instantánea -->
-      <button type="button" class="spotify-main-play-btn" id="btnModalPlayPause" aria-label="Reproducir o Pausar">
-        <svg id="svgPlayIcon" viewBox="0 0 24 24" width="30" height="30" fill="currentColor">
-          <path d="M8 5v14l11-7z"/>
-        </svg>
-        <svg id="svgPauseIcon" viewBox="0 0 24 24" width="28" height="28" fill="currentColor" style="display: none;">
-          <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-        </svg>
-      </button>
-
-      <button type="button" class="control-btn btn-skip" id="btnModalNext" aria-label="Pista siguiente">
-        <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
-          <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
-        </svg>
-      </button>
-
-      <button type="button" class="control-btn" id="btnModalRepeat" aria-label="Repetir">
-        <span class="ctrl-icon">🔁</span>
-        <span class="ctrl-dot"></span>
-      </button>
-    </div>
-
-    <!-- Tarjeta Inferior de Vista Previa de Letras (Estilo Spotify Canvas) -->
-    <div class="lyrics-preview-card" id="btnIrALetras">
-      <div class="lyrics-card-top">
-        <span class="lyrics-card-label">Letra</span>
-        <span class="lyrics-card-expand">⤢</span>
-      </div>
-      <p class="lyrics-card-preview-text" id="lyricsCardPreviewText">Toca aquí para ver la letra sincronizada</p>
-    </div>
-
-  </div>
-
-  <!-- Diálogo: Selector de Perfiles (Papá / Hijo) -->
-  <div class="dialog-backdrop" id="dialogPerfiles">
-    <div class="dialog-box">
-      <h3>Seleccionar Perfil</h3>
-      <div class="dialog-list" id="listaPerfilesDialog"></div>
-      <button type="button" class="btn-primary" id="btnCrearNuevoPerfil" style="width: 100%; margin-bottom: 8px;">+ Agregar Perfil</button>
-      <button type="button" class="btn-primary" id="btnCerrarDialogPerfiles" style="width: 100%; background: var(--bg-card); color: #fff;">Cerrar</button>
-    </div>
-  </div>
-
-  <!-- Diálogo: Agregar a Lista de Reproducción -->
-  <div class="dialog-backdrop" id="dialogAgregarALista">
-    <div class="dialog-box">
-      <h3>Guardar en Lista</h3>
-      <div class="dialog-list" id="listasParaAgregarDialog"></div>
-      <button type="button" class="btn-primary" id="btnCerrarDialogAgregar" style="width: 100%; background: var(--bg-card); color: #fff;">Cancelar</button>
-    </div>
-  </div>
-
-  <!-- Orquestador Principal JS (Módulo ES6 desacoplado) -->
+  <!-- Controlador Modular (Sin JS incrustado) -->
   <script type="module" src="/js/app_controller.js"></script>
-
 </body>
 </html>

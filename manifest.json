@@ -1,12 +1,12 @@
 {
-  "name": "Gomezfy Music",
-  "short_name": "Gomezfy",
-  "description": "Reproductor de música sin anuncios y con letras sincronizadas para iPhone.",
+  "name": "GomezTube - Videos sin Comerciales",
+  "short_name": "GomezTube",
+  "description": "Reproductor de videos de YouTube sin comerciales, con Picture-in-Picture y modo teatro.",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#121212",
-  "theme_color": "#121212",
+  "orientation": "any",
+  "background_color": "#0f0f0f",
+  "theme_color": "#0f0f0f",
   "icons": [
     {
       "src": "/icons/icon-192.png",

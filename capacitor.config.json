@@ -1,6 +1,6 @@
 {
   "appId": "com.gomezfy.music",
-  "appName": "Gomezfy",
+  "appName": "GomezTube",
   "webDir": "www",
   "bundledWebRuntime": false,
   "ios": {

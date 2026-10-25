@@ -1,34 +1,47 @@
 /**
- * SearchService - Servicio de búsqueda desacoplado.
- * Responsabilidad Única: Comunicarse con la API de búsqueda y cachear consultas.
+ * SearchService - GomezTube
+ * Responsabilidad Única: Cliente de API para búsqueda y feed de videos.
  */
 
 export class SearchService {
-  constructor() {
-    this.cache = new Map();
-  }
-
-  async buscar(query) {
-    const q = query.trim();
-    if (q.length < 2) return [];
-
-    if (this.cache.has(q)) {
-      return this.cache.get(q);
-    }
-
+  /**
+   * Realiza una búsqueda de videos por término.
+   * @param {string} query
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<Array<Object>>}
+   */
+  static async buscar(query = '', signal = null) {
     try {
-      let response = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
-      if (!response.ok && response.status === 404) {
-        response = await fetch(`/api/search.py?q=${encodeURIComponent(q)}`);
+      const url = `/api/search?q=${encodeURIComponent(query.trim())}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        },
+        signal: signal
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error en servidor: ${response.status}`);
       }
-      if (!response.ok) throw new Error('Error en búsqueda');
+
       const data = await response.json();
-      const results = data.results || [];
-      this.cache.set(q, results);
-      return results;
-    } catch (err) {
-      console.error('[SearchService Error]:', err);
+      return Array.isArray(data.results) ? data.results : [];
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        return [];
+      }
+      console.error('[SearchService] Fallo al buscar videos:', error);
       return [];
     }
+  }
+
+  /**
+   * Obtiene los videos en tendencia actuales.
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<Array<Object>>}
+   */
+  static async obtenerTendencias(signal = null) {
+    return this.buscar('', signal);
   }
 }

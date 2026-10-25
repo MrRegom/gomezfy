@@ -1,12 +1,11 @@
-const CACHE_NAME = 'gomezfy-v20';
+const CACHE_NAME = 'gomeztube-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
   '/css/app.css',
-  '/js/audio_engine.js',
+  '/js/video_player.js',
   '/js/storage_service.js',
-  '/js/lyrics_service.js',
   '/js/search_service.js',
   '/js/app_controller.js',
   '/icons/apple-touch-icon.png',
@@ -37,7 +36,7 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Let API requests pass directly to the network
+  // Las peticiones al backend serverless pasan siempre directamente a la red
   if (event.request.url.includes('/api/')) {
     return;
   }

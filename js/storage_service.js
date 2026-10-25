@@ -1,152 +1,118 @@
 /**
- * StorageService - Patrón Repository para persistencia Local-First.
- * Responsabilidad Única: Manejar el aislamiento de perfiles locales (Papá, Hijo)
- * y sus respectivas listas de reproducción y favoritos sin dependencias externas.
+ * StorageService - GomezTube
+ * Responsabilidad Única: Persistencia local (localStorage) para videos guardados
+ * ("Ver más tarde") e historial de visualización.
  */
 
-const DEFAULT_PROFILES = [
-  { id: 'papa', name: 'Papá', avatar: '👨' },
-  { id: 'hijo', name: 'Hijo', avatar: '👦' }
-];
+const STORAGE_KEYS = Object.freeze({
+  FAVORITOS: 'gomeztube_guardados_v1',
+  HISTORIAL: 'gomeztube_historial_v1'
+});
+
+const MAX_HISTORIAL_ITEMS = 50;
 
 export class StorageService {
-  constructor() {
-    this._inicializarPerfiles();
-  }
-
-  _inicializarPerfiles() {
-    const perfilesGuardados = localStorage.getItem('gomezfy_profiles');
-    if (!perfilesGuardados) {
-      localStorage.setItem('gomezfy_profiles', JSON.stringify(DEFAULT_PROFILES));
-      localStorage.setItem('gomezfy_active_profile', 'papa');
-    }
-  }
-
-  getPerfiles() {
+  /**
+   * Obtiene la lista de videos guardados.
+   * @returns {Array<Object>}
+   */
+  static obtenerFavoritos() {
     try {
-      return JSON.parse(localStorage.getItem('gomezfy_profiles')) || DEFAULT_PROFILES;
-    } catch {
-      return DEFAULT_PROFILES;
-    }
-  }
-
-  getPerfilActivo() {
-    const activoId = localStorage.getItem('gomezfy_active_profile') || 'papa';
-    const perfiles = this.getPerfiles();
-    return perfiles.find(p => p.id === activoId) || perfiles[0];
-  }
-
-  cambiarPerfil(perfilId) {
-    const perfiles = this.getPerfiles();
-    const existe = perfiles.some(p => p.id === perfilId);
-    if (existe) {
-      localStorage.setItem('gomezfy_active_profile', perfilId);
-      return true;
-    }
-    return false;
-  }
-
-  agregarPerfil(nombre, avatar = '🎧') {
-    if (!nombre.trim()) return null;
-    const perfiles = this.getPerfiles();
-    const id = 'perfil_' + Date.now();
-    const nuevo = { id, name: nombre.trim(), avatar };
-    perfiles.push(nuevo);
-    localStorage.setItem('gomezfy_profiles', JSON.stringify(perfiles));
-    return nuevo;
-  }
-
-  // --- Listas de Reproducción vinculadas al perfil activo ---
-
-  _getClaveListas() {
-    const perfil = this.getPerfilActivo();
-    return `gomezfy_playlists_${perfil.id}`;
-  }
-
-  getListas() {
-    try {
-      const data = localStorage.getItem(this._getClaveListas());
+      const data = localStorage.getItem(STORAGE_KEYS.FAVORITOS);
       return data ? JSON.parse(data) : [];
-    } catch {
+    } catch (e) {
+      console.warn('[StorageService] Error al leer favoritos:', e);
       return [];
     }
   }
 
-  crearLista(nombre) {
-    if (!nombre.trim()) return null;
-    const listas = this.getListas();
-    const nueva = {
-      id: 'pl_' + Date.now(),
-      name: nombre.trim(),
-      tracks: [],
-      createdAt: new Date().toISOString()
-    };
-    listas.unshift(nueva);
-    localStorage.setItem(this._getClaveListas(), JSON.stringify(listas));
-    return nueva;
+  /**
+   * Verifica si un video ya está guardado.
+   * @param {string} videoId
+   * @returns {boolean}
+   */
+  static esFavorito(videoId) {
+    if (!videoId) return false;
+    const favs = this.obtenerFavoritos();
+    return favs.some((item) => item.id === videoId);
   }
 
-  eliminarLista(listaId) {
-    let listas = this.getListas();
-    listas = listas.filter(l => l.id !== listaId);
-    localStorage.setItem(this._getClaveListas(), JSON.stringify(listas));
-  }
+  /**
+   * Agrega o elimina un video de la lista de guardados.
+   * @param {Object} video
+   * @returns {boolean} true si quedó guardado, false si fue removido
+   */
+  static alternarFavorito(video) {
+    if (!video || !video.id) return false;
+    const favs = this.obtenerFavoritos();
+    const index = favs.findIndex((item) => item.id === video.id);
 
-  agregarPistaALista(listaId, track) {
-    const listas = this.getListas();
-    const lista = listas.find(l => l.id === listaId);
-    if (lista) {
-      const yaExiste = lista.tracks.some(t => t.id === track.id);
-      if (!yaExiste) {
-        lista.tracks.push(track);
-        localStorage.setItem(this._getClaveListas(), JSON.stringify(listas));
-        return true;
-      }
-    }
-    return false;
-  }
-
-  removerPistaDeLista(listaId, trackId) {
-    const listas = this.getListas();
-    const lista = listas.find(l => l.id === listaId);
-    if (lista) {
-      lista.tracks = lista.tracks.filter(t => t.id !== trackId);
-      localStorage.setItem(this._getClaveListas(), JSON.stringify(listas));
-      return true;
-    }
-    return false;
-  }
-
-  // --- Favoritos del perfil activo ---
-
-  _getClaveFavoritos() {
-    const perfil = this.getPerfilActivo();
-    return `gomezfy_favorites_${perfil.id}`;
-  }
-
-  getFavoritos() {
-    try {
-      const data = localStorage.getItem(this._getClaveFavoritos());
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
-  }
-
-  esFavorito(trackId) {
-    const favs = this.getFavoritos();
-    return favs.some(t => t.id === trackId);
-  }
-
-  toggleFavorito(track) {
-    let favs = this.getFavoritos();
-    const existe = favs.some(t => t.id === track.id);
-    if (existe) {
-      favs = favs.filter(t => t.id !== track.id);
+    if (index >= 0) {
+      favs.splice(index, 1);
+      this._guardar(STORAGE_KEYS.FAVORITOS, favs);
+      return false;
     } else {
-      favs.unshift(track);
+      favs.unshift(video);
+      this._guardar(STORAGE_KEYS.FAVORITOS, favs);
+      return true;
     }
-    localStorage.setItem(this._getClaveFavoritos(), JSON.stringify(favs));
-    return !existe;
+  }
+
+  /**
+   * Registra un video en el historial de reproducción.
+   * @param {Object} video
+   */
+  static guardarEnHistorial(video) {
+    if (!video || !video.id) return;
+    try {
+      let historial = this.obtenerHistorial();
+      // Eliminar ocurrencia previa para colocarlo al principio
+      historial = historial.filter((item) => item.id !== video.id);
+      historial.unshift({
+        ...video,
+        vistoEn: Date.now()
+      });
+
+      if (historial.length > MAX_HISTORIAL_ITEMS) {
+        historial = historial.slice(0, MAX_HISTORIAL_ITEMS);
+      }
+
+      this._guardar(STORAGE_KEYS.HISTORIAL, historial);
+    } catch (e) {
+      console.warn('[StorageService] Error al actualizar historial:', e);
+    }
+  }
+
+  /**
+   * Obtiene el historial de visualización.
+   * @returns {Array<Object>}
+   */
+  static obtenerHistorial() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.HISTORIAL);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      console.warn('[StorageService] Error al leer historial:', e);
+      return [];
+    }
+  }
+
+  /**
+   * Borra el historial completo.
+   */
+  static limpiarHistorial() {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.HISTORIAL);
+    } catch (e) {
+      console.warn('[StorageService] Error al limpiar historial:', e);
+    }
+  }
+
+  static _guardar(clave, data) {
+    try {
+      localStorage.setItem(clave, JSON.stringify(data));
+    } catch (e) {
+      console.warn(`[StorageService] Error al guardar en ${clave}:`, e);
+    }
   }
 }

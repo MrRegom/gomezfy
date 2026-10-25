@@ -291,9 +291,23 @@ body {
 }
 
 .channel-badge-nofads {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 0.72rem;
   color: #4ade80;
   font-weight: 500;
+}
+
+.action-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-icon svg {
+  width: 16px;
+  height: 16px;
 }
 
 .video-actions-toolbar {
@@ -368,6 +382,9 @@ body {
 }
 
 .badge-adfree {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 0.75rem;
   background-color: rgba(74, 222, 128, 0.12);
   color: #4ade80;
@@ -548,10 +565,18 @@ body {
   color: var(--text-muted);
 }
 
-.empty-icon {
-  font-size: 2.8rem;
-  display: block;
-  margin-bottom: 14px;
+.empty-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.empty-icon-wrapper svg {
+  width: 44px;
+  height: 44px;
 }
 
 .empty-state h3 {

@@ -22,36 +22,42 @@
   <header class="app-header">
     <div class="header-container">
       <div class="brand-badge" role="banner">
-        <span class="brand-logo-icon">▶</span>
+        <span class="brand-logo-icon">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        </span>
         <span class="brand-logo-text">Gomez<span class="brand-logo-accent">Tube</span></span>
       </div>
 
       <div class="search-bar-wrapper">
         <div class="search-input-box">
-          <span class="search-icon-prefix">🔍</span>
+          <span class="search-icon-prefix">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          </span>
           <input
             type="search"
             id="inputSearch"
             class="search-input"
-            placeholder="Buscar en GomezTube sin anuncios..."
+            placeholder="Buscar videos, canales o temas..."
             autocomplete="off"
             autocorrect="off"
             autocapitalize="none"
           >
-          <button type="button" id="btnClearSearch" class="btn-clear-search" style="display: none;" title="Limpiar búsqueda">✕</button>
+          <button type="button" id="btnClearSearch" class="btn-clear-search" style="display: none;" title="Limpiar búsqueda">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
         </div>
       </div>
     </div>
 
-    <!-- Píldoras de Categorías Rápidas -->
+    <!-- Píldoras de Categorías Rápidas (Estilo YouTube oficial, sin emojis) -->
     <div class="categories-carousel" role="tablist" aria-label="Categorías">
-      <button type="button" class="category-chip active" data-query="tendencias" role="tab">🔥 Tendencias</button>
-      <button type="button" class="category-chip" data-query="musica en vivo" role="tab">🎵 Música</button>
-      <button type="button" class="category-chip" data-query="podcast completo" role="tab">🎙️ Podcasts</button>
-      <button type="button" class="category-chip" data-query="tecnologia inteligencia artificial" role="tab">💻 Tecnología</button>
-      <button type="button" class="category-chip" data-query="gameplay español" role="tab">🎮 Gaming</button>
-      <button type="button" class="category-chip" data-query="noticias en vivo" role="tab">📰 Noticias</button>
-      <button type="button" class="category-chip" data-query="documental español" role="tab">🌍 Documentales</button>
+      <button type="button" class="category-chip active" data-query="tendencias" role="tab">Tendencias</button>
+      <button type="button" class="category-chip" data-query="musica en vivo" role="tab">Música</button>
+      <button type="button" class="category-chip" data-query="podcast completo" role="tab">Podcasts</button>
+      <button type="button" class="category-chip" data-query="tecnologia" role="tab">Tecnología</button>
+      <button type="button" class="category-chip" data-query="gameplay español" role="tab">Gaming</button>
+      <button type="button" class="category-chip" data-query="noticias en vivo" role="tab">Noticias</button>
+      <button type="button" class="category-chip" data-query="documental" role="tab">Documentales</button>
     </div>
   </header>
 
@@ -66,7 +72,10 @@
     <section class="app-view active" id="viewFeed">
       <div class="feed-header-bar">
         <h2 class="section-heading" id="sectionTitle">Tendencias</h2>
-        <span class="badge-adfree">⚡ 100% Sin comerciales</span>
+        <span class="badge-adfree">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>
+          Sin anuncios
+        </span>
       </div>
       <div class="video-cards-grid" id="videoGrid"></div>
     </section>
@@ -75,12 +84,12 @@
     <section class="app-view" id="viewLibrary">
       <div class="library-header-bar">
         <h2 class="section-heading">Tu Biblioteca</h2>
-        <button type="button" class="btn-text-danger" id="btnLimpiarHistorial" style="display: none;">🗑️ Vaciar Historial</button>
+        <button type="button" class="btn-text-danger" id="btnLimpiarHistorial" style="display: none;">Vaciar historial</button>
       </div>
 
       <div class="library-subtabs-row">
-        <button type="button" class="subtab-btn active" id="btnTabFavoritos">⭐ Guardados</button>
-        <button type="button" class="subtab-btn" id="btnTabHistorial">🕒 Historial</button>
+        <button type="button" class="subtab-btn active" id="btnTabFavoritos">Guardados</button>
+        <button type="button" class="subtab-btn" id="btnTabHistorial">Historial</button>
       </div>
 
       <div class="video-cards-grid" id="libraryGrid"></div>
@@ -90,12 +99,16 @@
 
   <!-- Barra de Navegación Inferior Móvil (Estilo App Nativa) -->
   <nav class="bottom-navigation-bar" aria-label="Navegación principal">
-    <button type="button" class="nav-tab-btn active" data-view="feed" title="Inicio y Explorar">
-      <span class="nav-tab-icon">🏠</span>
+    <button type="button" class="nav-tab-btn active" data-view="feed" title="Inicio">
+      <span class="nav-tab-icon">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+      </span>
       <span class="nav-tab-label">Inicio</span>
     </button>
-    <button type="button" class="nav-tab-btn" data-view="library" title="Videos guardados e Historial">
-      <span class="nav-tab-icon">📁</span>
+    <button type="button" class="nav-tab-btn" data-view="library" title="Biblioteca">
+      <span class="nav-tab-icon">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+      </span>
       <span class="nav-tab-label">Biblioteca</span>
     </button>
   </nav>

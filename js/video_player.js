@@ -5,6 +5,8 @@
  * nativo de Pantalla Completa y Picture-in-Picture.
  */
 
+import { ICONS } from './ui_icons.js';
+
 export class VideoPlayer {
   constructor(containerElement, infoContainerElement) {
     this.container = containerElement;
@@ -85,26 +87,26 @@ export class VideoPlayer {
             ${
               video.channelAvatar
                 ? `<img src="${video.channelAvatar}" alt="${this._sanitizarHtml(video.channel)}" class="channel-avatar" loading="lazy">`
-                : `<div class="channel-avatar-placeholder">📺</div>`
+                : `<div class="channel-avatar-placeholder">${ICONS.USER_AVATAR}</div>`
             }
           </div>
           <div class="channel-meta">
             <span class="channel-name">${this._sanitizarHtml(video.channel || 'Canal')}</span>
-            <span class="channel-badge-nofads">⚡ Sin comerciales</span>
+            <span class="channel-badge-nofads">${ICONS.SHIELD_CHECK} Sin comerciales</span>
           </div>
         </div>
 
         <div class="video-actions-toolbar">
           <button type="button" class="action-btn" id="btnActionGuardar" title="Guardar en biblioteca">
-            <span class="action-icon" id="iconBtnGuardar">⭐</span>
+            <span class="action-icon" id="iconBtnGuardar">${ICONS.BOOKMARK_OUTLINE}</span>
             <span class="action-text" id="txtBtnGuardar">Guardar</span>
           </button>
           <button type="button" class="action-btn" id="btnActionCompartir" title="Compartir enlace">
-            <span class="action-icon">🔗</span>
+            <span class="action-icon">${ICONS.SHARE}</span>
             <span class="action-text">Compartir</span>
           </button>
           <button type="button" class="action-btn btn-close-player" id="btnActionCerrar" title="Cerrar reproductor">
-            <span class="action-icon">✕</span>
+            <span class="action-icon">${ICONS.CLOSE}</span>
           </button>
         </div>
       </div>
@@ -134,7 +136,7 @@ export class VideoPlayer {
     const icon = document.getElementById('iconBtnGuardar');
     const txt = document.getElementById('txtBtnGuardar');
     if (icon && txt) {
-      icon.textContent = esFavorito ? '★' : '⭐';
+      icon.innerHTML = esFavorito ? ICONS.BOOKMARK_FILLED : ICONS.BOOKMARK_OUTLINE;
       txt.textContent = esFavorito ? 'Guardado' : 'Guardar';
     }
   }

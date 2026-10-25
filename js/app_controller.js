@@ -7,6 +7,7 @@
 import { SearchService } from './search_service.js';
 import { StorageService } from './storage_service.js';
 import { VideoPlayer } from './video_player.js';
+import { ICONS } from './ui_icons.js';
 
 export class AppController {
   constructor() {
@@ -86,7 +87,7 @@ export class AppController {
   _configurarEventosBuscador() {
     this.inputSearch.addEventListener('input', (e) => {
       const query = e.target.value.trim();
-      this.btnClearSearch.style.display = query.length > 0 ? 'block' : 'none';
+      this.btnClearSearch.style.display = query.length > 0 ? 'inline-flex' : 'none';
 
       clearTimeout(this.searchDebounceTimer);
       this.searchDebounceTimer = setTimeout(() => {
@@ -212,9 +213,9 @@ export class AppController {
       if (favoritos.length === 0) {
         this.libraryGrid.innerHTML = `
           <div class="empty-state">
-            <span class="empty-icon">⭐</span>
+            <div class="empty-icon-wrapper">${ICONS.BOOKMARK_OUTLINE}</div>
             <h3>No tienes videos guardados</h3>
-            <p>Guarda tus videos favoritos o para ver más tarde usando el botón ⭐ en cualquier video.</p>
+            <p>Guarda tus videos para ver más tarde usando el botón Guardar en cualquier video.</p>
           </div>
         `;
         return;
@@ -226,7 +227,7 @@ export class AppController {
       if (historial.length === 0) {
         this.libraryGrid.innerHTML = `
           <div class="empty-state">
-            <span class="empty-icon">🕒</span>
+            <div class="empty-icon-wrapper">${ICONS.HISTORY}</div>
             <h3>El historial está vacío</h3>
             <p>Los videos que reproduzcas aparecerán aquí automáticamente.</p>
           </div>
@@ -243,7 +244,7 @@ export class AppController {
     if (!videos || videos.length === 0) {
       contenedor.innerHTML = `
         <div class="empty-state">
-          <span class="empty-icon">🔍</span>
+          <div class="empty-icon-wrapper">${ICONS.SEARCH}</div>
           <h3>No se encontraron videos</h3>
           <p>Intenta con otros términos de búsqueda.</p>
         </div>
@@ -272,7 +273,7 @@ export class AppController {
 
     const avatarHtml = video.channelAvatar
       ? `<img src="${video.channelAvatar}" alt="${this._sanitizarHtml(video.channel)}" class="card-channel-avatar" loading="lazy">`
-      : `<div class="card-channel-avatar-placeholder">📺</div>`;
+      : `<div class="card-channel-avatar-placeholder">${ICONS.USER_AVATAR}</div>`;
 
     card.innerHTML = `
       <div class="card-thumbnail-wrapper">
@@ -315,7 +316,7 @@ export class AppController {
     contenedor.innerHTML = `
       <div class="loading-state">
         <div class="spinner"></div>
-        <p>Cargando videos sin anuncios...</p>
+        <p>Cargando videos...</p>
       </div>
     `;
   }

@@ -46,9 +46,42 @@ export class AppController {
     this._configurarEventosCategorias();
     this._configurarEventosBiblioteca();
     this._configurarEventosReproductor();
+    this._configurarEventosDestacadoNomad();
 
     // Cargar feed inicial de tendencias
     this.cargarFeedPorCategoria('tendencias', 'Tendencias');
+  }
+
+  _configurarEventosDestacadoNomad() {
+    const btnPlay = document.getElementById('btnPlayNomadLatest');
+    const btnBrowse = document.getElementById('btnBrowseNomad');
+
+    const nomadLatestVideo = {
+      id: 'p34Oop-WnjQ',
+      title: 'NOMAD WORSHIP - Un Paso (Video Oficial)',
+      channel: 'NOMAD WORSHIP',
+      channelAvatar: 'https://i.ytimg.com/vi/p34Oop-WnjQ/hq720.jpg',
+      thumbnail: 'https://i.ytimg.com/vi/p34Oop-WnjQ/hq720.jpg',
+      duration: '4:49',
+      views: 'Video Oficial',
+      published: 'Lanzamiento'
+    };
+
+    if (btnPlay) {
+      btnPlay.addEventListener('click', () => {
+        this.videoPlayer.cargarVideo(nomadLatestVideo);
+        StorageService.guardarEnHistorial(nomadLatestVideo);
+      });
+    }
+
+    if (btnBrowse) {
+      btnBrowse.addEventListener('click', () => {
+        this.cargarFeedPorCategoria('nomad worship', 'NOMAD WORSHIP - Videos y Discografía');
+        this.categoryChips.forEach((c) => {
+          c.classList.toggle('active', c.dataset.query === 'nomad worship');
+        });
+      });
+    }
   }
 
   _configurarEventosNavegacion() {

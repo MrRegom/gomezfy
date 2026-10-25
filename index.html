@@ -52,6 +52,7 @@
     <!-- Píldoras de Categorías Rápidas (Estilo YouTube oficial, sin emojis) -->
     <div class="categories-carousel" role="tablist" aria-label="Categorías">
       <button type="button" class="category-chip active" data-query="tendencias" role="tab">Tendencias</button>
+      <button type="button" class="category-chip chip-nomad" data-query="nomad worship" role="tab">Nomad Worship</button>
       <button type="button" class="category-chip" data-query="musica en vivo" role="tab">Música</button>
       <button type="button" class="category-chip" data-query="podcast completo" role="tab">Podcasts</button>
       <button type="button" class="category-chip" data-query="tecnologia" role="tab">Tecnología</button>
@@ -70,6 +71,28 @@
     
     <!-- Vista 1: Feed Principal / Resultados -->
     <section class="app-view active" id="viewFeed">
+      
+      <!-- Tarjeta Destacada Permanente: Nomad Worship -->
+      <article class="featured-artist-card" id="featuredNomadCard" aria-label="Grupo destacado: Nomad Worship">
+        <div class="featured-card-content">
+          <span class="featured-card-tag">Artista Destacado</span>
+          <h2 class="featured-card-title">NOMAD WORSHIP</h2>
+          <p class="featured-card-subtitle">Música oficial, sesiones en vivo y adoración.</p>
+          <div class="featured-card-actions">
+            <button type="button" class="btn-featured-play" id="btnPlayNomadLatest" title="Reproducir último lanzamiento">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+              <span>Reproducir "Un Paso"</span>
+            </button>
+            <button type="button" class="btn-featured-browse" id="btnBrowseNomad" title="Ver catálogo completo de Nomad Worship">
+              <span>Ver todos los videos</span>
+            </button>
+          </div>
+        </div>
+        <div class="featured-card-media" id="featuredNomadCover">
+          <img src="https://i.ytimg.com/vi/p34Oop-WnjQ/hq720.jpg" alt="Nomad Worship Portada" class="featured-cover-img" loading="lazy">
+        </div>
+      </article>
+
       <div class="feed-header-bar">
         <h2 class="section-heading" id="sectionTitle">Tendencias</h2>
         <span class="badge-adfree">

@@ -18,6 +18,10 @@ node_modules/
 www/
 ios/App/build/
 ios/App/Pods/
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
 
 # Sistema y Editores
 .DS_Store

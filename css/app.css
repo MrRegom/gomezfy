@@ -874,3 +874,233 @@ body {
     padding-bottom: 40px;
   }
 }
+
+/* ==========================================================================
+   Modal y Controles de Proyección a TV (Smart TV / Cast / AirPlay)
+   ========================================================================== */
+#btnActionCastTV {
+  border-color: rgba(62, 166, 255, 0.35);
+  color: #3ea6ff;
+}
+
+#btnActionCastTV:hover {
+  background-color: rgba(62, 166, 255, 0.15);
+  border-color: #3ea6ff;
+}
+
+.modal-tvcast-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2500;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.modal-tvcast-overlay.visible {
+  display: flex;
+  animation: modalFadeIn 0.22s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.modal-tvcast-card {
+  background-color: #161616;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  max-width: 520px;
+  width: 100%;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75);
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-tvcast-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.modal-tvcast-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.modal-tvcast-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background-color: rgba(62, 166, 255, 0.15);
+  color: #3ea6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.modal-tvcast-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.modal-tvcast-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 2px 0 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 340px;
+}
+
+.btn-close-modal {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.btn-close-modal:hover {
+  color: #ffffff;
+  background-color: var(--bg-hover);
+}
+
+.modal-tvcast-body {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tvcast-option-card {
+  background-color: #1f1f1f;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  padding: 14px 16px;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.tvcast-option-card:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  background-color: #232323;
+}
+
+.tvcast-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.badge-recommended {
+  background-color: rgba(74, 222, 128, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
+.tvcast-option-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 5px 0;
+}
+
+.tvcast-option-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin: 0 0 10px 0;
+}
+
+.btn-tvcast-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  border-radius: 20px;
+  padding: 9px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+  border: none;
+  box-sizing: border-box;
+}
+
+.btn-tvcast-action:active {
+  transform: scale(0.98);
+}
+
+.btn-tvcast-primary {
+  background-color: #3ea6ff;
+  color: #0f0f0f;
+}
+
+.btn-tvcast-primary:hover {
+  background-color: #65b8ff;
+}
+
+.btn-tvcast-secondary {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.btn-tvcast-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.tvcast-info-box {
+  background-color: rgba(62, 166, 255, 0.06);
+  border-left: 3px solid #3ea6ff;
+  border-radius: 0 10px 10px 0;
+  padding: 12px 14px;
+}
+
+.tvcast-info-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #3ea6ff;
+  margin: 0 0 4px 0;
+}
+
+.tvcast-info-text {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+  margin: 0;
+}

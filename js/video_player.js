@@ -6,6 +6,7 @@
  */
 
 import { ICONS } from './ui_icons.js';
+import { tvCastService } from './tv_cast_service.js';
 
 export class VideoPlayer {
   constructor(containerElement, infoContainerElement) {
@@ -53,7 +54,7 @@ export class VideoPlayer {
           src="${embedUrl}"
           title="${this._sanitizarHtml(video.title)}"
           frameborder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen; presentation"
           allowfullscreen
           referrerpolicy="strict-origin-when-cross-origin"
         ></iframe>
@@ -102,6 +103,10 @@ export class VideoPlayer {
         </div>
 
         <div class="video-actions-toolbar">
+          <button type="button" class="action-btn" id="btnActionCastTV" title="Proyectar a Smart TV">
+            <span class="action-icon">${ICONS.CAST}</span>
+            <span class="action-text">Transmitir</span>
+          </button>
           <button type="button" class="action-btn" id="btnActionGuardar" title="Guardar en biblioteca">
             <span class="action-icon" id="iconBtnGuardar">${ICONS.BOOKMARK_OUTLINE}</span>
             <span class="action-text" id="txtBtnGuardar">Guardar</span>
@@ -118,6 +123,13 @@ export class VideoPlayer {
     `;
 
     // Vincular eventos de la barra de acciones
+    const btnCastTV = document.getElementById('btnActionCastTV');
+    if (btnCastTV) {
+      btnCastTV.addEventListener('click', () => {
+        tvCastService.proyectar(video);
+      });
+    }
+
     const btnCerrar = document.getElementById('btnActionCerrar');
     if (btnCerrar) {
       btnCerrar.addEventListener('click', () => this.cerrar());

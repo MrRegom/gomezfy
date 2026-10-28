@@ -109,5 +109,73 @@ export const ICONS = Object.freeze({
       <polyline points="15 3 21 3 21 9"></polyline>
       <line x1="10" y1="14" x2="21" y2="3"></line>
     </svg>
+  `,
+
+  MENU: `
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  `,
+
+  MIC: `
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+      <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+      <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+    </svg>
+  `,
+
+  CREATE: `
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <line x1="12" y1="5" x2="12" y2="19"></line>
+      <line x1="5" y1="12" x2="19" y2="12"></line>
+    </svg>
+  `,
+
+  BELL: `
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+      <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+    </svg>
+  `,
+
+  SHORTS: `
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
+      <path d="M17.77 10.32l-1.2-.5a3.97 3.97 0 0 0-4.66.92l-.37.44-.37-.44a3.97 3.97 0 0 0-4.66-.92l-1.2.5A3.99 3.99 0 0 0 3 13.97v1.06c0 1.49.82 2.85 2.13 3.53l5.87 3.06c.63.33 1.37.33 2 0l5.87-3.06A4 4 0 0 0 21 15.03v-1.06a3.99 3.99 0 0 0-3.23-3.65zM10 14.5v-5l4.5 2.5-4.5 2.5z"/>
+    </svg>
+  `,
+
+  SUBSCRIPTIONS: `
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+      <polygon points="10 11 15 14 10 17 10 11" fill="currentColor"></polygon>
+    </svg>
+  `,
+
+  LIKE: `
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+    </svg>
+  `,
+
+  DISLIKE: `
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"></path>
+    </svg>
+  `,
+
+  MORE_VERT: `
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+      <circle cx="12" cy="5" r="1.5"></circle>
+      <circle cx="12" cy="12" r="1.5"></circle>
+      <circle cx="12" cy="19" r="1.5"></circle>
+    </svg>
+  `,
+
+  VERIFIED: `
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" opacity="0.75" aria-hidden="true">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+    </svg>
   `
 });

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gomeztube-v2';
+const CACHE_NAME = 'gomeztube-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

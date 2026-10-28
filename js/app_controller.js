@@ -17,6 +17,7 @@ export class AppController {
     this.theaterContainer = document.getElementById('watchPlayerTheater');
     this.detailsContainer = document.getElementById('watchVideoDetails');
     this.relatedListContainer = document.getElementById('watchRelatedList');
+    this.relatedHeading = document.getElementById('relatedHeading');
     this.btnCloseWatchView = document.getElementById('btnCloseWatchView');
 
     this.btnMenuToggle = document.getElementById('btnMenuToggle');
@@ -57,6 +58,11 @@ export class AppController {
     this.librarySubTab = 'favoritos';
     this.searchDebounceTimer = null;
     this.currentAbortController = null;
+
+    // Estado del contexto de reproducción (cola y continuidad)
+    this.currentSearchQuery = '';
+    this.currentContextTitle = 'Tendencias';
+    this.currentContextVideos = [];
 
     this._inicializar();
   }
@@ -259,6 +265,9 @@ export class AppController {
     this.currentAbortController = new AbortController();
 
     const videos = await SearchService.buscar(query, this.currentAbortController.signal);
+    this.currentSearchQuery = query;
+    this.currentContextTitle = `Resultados para "${query}"`;
+    this.currentContextVideos = videos || [];
     this.renderizarListaVideos(videos, this.videoGrid);
 
     // Scroll inmediato a la cabecera de resultados para que no haya que scrollear
@@ -305,6 +314,9 @@ export class AppController {
     this.currentAbortController = new AbortController();
 
     const videos = await SearchService.buscar(categoriaQuery, this.currentAbortController.signal);
+    this.currentSearchQuery = '';
+    this.currentContextTitle = tituloCategoria;
+    this.currentContextVideos = videos || [];
     this.renderizarListaVideos(videos, this.videoGrid);
   }
 
@@ -350,6 +362,9 @@ export class AppController {
       this.featuredShelf.style.display = 'none';
     }
     this.sectionTitle.textContent = 'Paracas - Sueños en el aire (Álbum 1978 EMI-Odeón)';
+    this.currentSearchQuery = '';
+    this.currentContextTitle = 'Paracas - Sueños en el aire (Álbum 1978)';
+    this.currentContextVideos = [...PARACAS_ALBUM.tracks];
     this.categoryChips.forEach((c) => {
       c.classList.toggle('active', c.dataset.query === 'paracas');
     });
@@ -388,28 +403,78 @@ export class AppController {
     const esFav = StorageService.esFavorito(video.id);
     this.videoPlayer.actualizarBotonFavorito(esFav);
 
-    // Cargar columna lateral de videos recomendados (Imagen 2)
-    this._cargarVideosRelacionados(video);
+    // Cargar columna lateral con lo que continúa de la búsqueda / lista activa
+    this._cargarVideosSiguientesYRelacionados(video);
   }
 
-  async _cargarVideosRelacionados(video) {
+  async _cargarVideosSiguientesYRelacionados(video) {
     if (!this.relatedListContainer) return;
 
-    this.relatedListContainer.innerHTML = `
-      <div class="loading-state-mini">
-        <div class="spinner-mini"></div>
-        <span>Cargando videos sugeridos...</span>
-      </div>
-    `;
+    let videosAContinuacion = [];
+    const indexActual = this.currentContextVideos.findIndex((v) => v.id === video.id);
 
-    // Buscar videos del mismo canal o tema relacionado
-    const queryRelacionados = video.channel ? `${video.channel} musica` : video.title;
-    const relacionados = await SearchService.buscar(queryRelacionados);
+    if (indexActual !== -1) {
+      // El video proviene de la búsqueda o lista activa:
+      // "Lo que continúa" son los videos que le siguen en esa misma búsqueda:
+      const siguientes = this.currentContextVideos.slice(indexActual + 1);
+      const anteriores = this.currentContextVideos.slice(0, indexActual);
+      videosAContinuacion = [...siguientes, ...anteriores];
 
-    // Filtrar el video actual si aparece en la lista
-    const videosFiltrados = (relacionados || []).filter((v) => v.id !== video.id).slice(0, 15);
+      if (this.relatedHeading) {
+        if (this.currentSearchQuery) {
+          this.relatedHeading.textContent = `A continuación: "${this.currentSearchQuery}"`;
+        } else {
+          this.relatedHeading.textContent = `A continuación en ${this.currentContextTitle}`;
+        }
+      }
+    } else {
+      if (this.relatedHeading) {
+        this.relatedHeading.textContent = 'A continuación';
+      }
+    }
 
-    this.renderizarListaRelacionados(videosFiltrados, this.relatedListContainer);
+    // Renderizar de inmediato los videos que continúan si ya los tenemos en memoria
+    if (videosAContinuacion.length > 0) {
+      this.renderizarListaRelacionados(videosAContinuacion, this.relatedListContainer);
+    }
+
+    // Si la cola tiene menos de 10 elementos o el video no estaba en el contexto previo,
+    // buscamos videos directamente relacionados con la temática exacta (sin mezclar canal)
+    if (videosAContinuacion.length < 10) {
+      if (videosAContinuacion.length === 0) {
+        this.relatedListContainer.innerHTML = `
+          <div class="loading-state-mini">
+            <div class="spinner-mini"></div>
+            <span>Cargando videos que continúan...</span>
+          </div>
+        `;
+      }
+
+      // Priorizar el término de búsqueda activo o las palabras clave temáticas del video
+      const queryRelacionado = this.currentSearchQuery || this._extraerTerminoBusquedaRelacionado(video.title);
+      const adicionales = await SearchService.buscar(queryRelacionado);
+
+      const idsExistentes = new Set([video.id, ...videosAContinuacion.map((v) => v.id)]);
+      const filtrados = (adicionales || []).filter((v) => !idsExistentes.has(v.id));
+
+      videosAContinuacion = [...videosAContinuacion, ...filtrados].slice(0, 20);
+      this.renderizarListaRelacionados(videosAContinuacion, this.relatedListContainer);
+    }
+  }
+
+  /**
+   * Extrae términos clave y temáticos de un título de video para búsquedas contextualmente exactas.
+   * @param {string} titulo
+   * @returns {string}
+   */
+  _extraerTerminoBusquedaRelacionado(titulo) {
+    if (!titulo) return '';
+    return titulo
+      .replace(/[\(\[\{].*?[\)\]\}]/g, ' ')
+      .replace(/(video oficial|video|official|audio|completo|hd|4k|karaoke|letra|lyrics)/gi, ' ')
+      .replace(/[\|•\-–—_]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   renderizarListaRelacionados(videos, contenedor) {

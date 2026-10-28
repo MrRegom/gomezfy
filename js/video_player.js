@@ -2,7 +2,8 @@
  * VideoPlayer - GomezTube
  * Responsabilidad Única: Orquestación del reproductor de video en formato Watch Page (2 Columnas)
  * idéntico a la experiencia oficial de YouTube Desktop y Mobile.
- * Incrustación Privacy-Enhanced (youtube-nocookie) sin comerciales y con soporte Cast/Picture-in-Picture.
+ * Incrustación Privacy-Enhanced (youtube-nocookie) sin comerciales, con soporte Cast/Picture-in-Picture
+ * y funcionalidad de doble clic / doble toque para adelantar/retroceder 15 segundos con animación oficial.
  */
 
 import { ICONS } from './ui_icons.js';
@@ -17,6 +18,37 @@ export class VideoPlayer {
     this.onCloseCallback = null;
     this.onFavoriteToggleCallback = null;
     this.isLiked = false;
+
+    // Estado del tiempo y reproducción
+    this.currentTime = 0;
+    this.duration = 0;
+    this.isPlaying = true;
+    this.keyboardListenerAttached = false;
+
+    this._inicializarEscuchaMensajesIframe();
+  }
+
+  /**
+   * Escucha mensajes enviados por el iframe de YouTube (postMessage API con enablejsapi=1)
+   * para mantener el tiempo actual sincronizado en milisegundos.
+   */
+  _inicializarEscuchaMensajesIframe() {
+    window.addEventListener('message', (event) => {
+      try {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        if (data && data.event === 'infoDelivery' && data.info) {
+          if (typeof data.info.currentTime === 'number') {
+            this.currentTime = data.info.currentTime;
+          }
+          if (typeof data.info.duration === 'number') {
+            this.duration = data.info.duration;
+          }
+          if (typeof data.info.playerState === 'number') {
+            this.isPlaying = data.info.playerState === 1; // 1 = PLAYING
+          }
+        }
+      } catch (_) {}
+    });
   }
 
   /**
@@ -29,8 +61,9 @@ export class VideoPlayer {
 
     this.currentVideo = video;
     this.isLiked = false;
+    this.currentTime = 0;
 
-    // Parámetros de reproducción limpios y continuos
+    // Parámetros de reproducción limpios y continuos con API JS activada
     const params = new URLSearchParams({
       autoplay: '1',
       rel: '0',
@@ -46,9 +79,9 @@ export class VideoPlayer {
 
     const embedUrl = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(video.id)}?${params.toString()}`;
 
-    // Renderizar iframe con relación de aspecto 16:9 y permisos nativos de TV/Fullscreen
+    // Renderizar iframe con relación de aspecto 16:9 y capa de doble toque estilo YouTube
     this.theaterContainer.innerHTML = `
-      <div class="yt-player-aspect-wrapper">
+      <div class="yt-player-aspect-wrapper" id="playerAspectWrapper">
         <iframe
           id="gomeztube-iframe"
           class="yt-iframe-player"
@@ -59,14 +92,220 @@ export class VideoPlayer {
           allowfullscreen
           referrerpolicy="strict-origin-when-cross-origin"
         ></iframe>
+
+        <!-- Capa de Gestos Doble Clic / Doble Toque (+/- 15 seg estilo YouTube) -->
+        <div class="yt-doubletap-layer" id="doubleTapLayer">
+          
+          <!-- Zona Izquierda (-15 seg) -->
+          <div class="yt-tap-zone zone-left" id="tapZoneLeft" title="Doble clic para retroceder 15s">
+            <div class="yt-seek-indicator" id="indicatorLeft">
+              <div class="yt-seek-ripple-arc arc-left"></div>
+              <div class="yt-seek-badge-content">
+                <div class="yt-seek-triangles">
+                  <span>&#9664;</span><span>&#9664;</span><span>&#9664;</span>
+                </div>
+                <span class="yt-seek-text" id="txtSeekLeft">-15 segundos</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Zona Central (Pausa / Reanudar en clic simple) -->
+          <div class="yt-tap-zone zone-center" id="tapZoneCenter"></div>
+
+          <!-- Zona Derecha (+15 seg) -->
+          <div class="yt-tap-zone zone-right" id="tapZoneRight" title="Doble clic para adelantar 15s">
+            <div class="yt-seek-indicator" id="indicatorRight">
+              <div class="yt-seek-ripple-arc arc-right"></div>
+              <div class="yt-seek-badge-content">
+                <div class="yt-seek-triangles">
+                  <span>&#9654;</span><span>&#9654;</span><span>&#9654;</span>
+                </div>
+                <span class="yt-seek-text" id="txtSeekRight">+15 segundos</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
       </div>
     `;
 
     this.iframe = document.getElementById('gomeztube-iframe');
     this._renderizarDetallesWatch(video);
+    this._configurarGestosDobleTapSeek();
+
+    // Enviar evento de escucha al iframe tan pronto cargue
+    if (this.iframe) {
+      this.iframe.addEventListener('load', () => {
+        this._enviarComando('listening');
+      });
+    }
 
     // Scroll suave hacia la zona superior al reproducir en pantallas móviles
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /**
+   * Configura los eventos de doble clic (escritorio/ratón), doble toque (móviles Android/iPhone)
+   * y atajos de teclado para adelantar y retroceder 15 segundos.
+   */
+  _configurarGestosDobleTapSeek() {
+    const zoneRight = document.getElementById('tapZoneRight');
+    const zoneLeft = document.getElementById('tapZoneLeft');
+    const zoneCenter = document.getElementById('tapZoneCenter');
+
+    let rightAccum = 0;
+    let rightTimer = null;
+    let lastTapRight = 0;
+
+    const ejecutarAdelantar = () => {
+      rightAccum += 15;
+      const txt = document.getElementById('txtSeekRight');
+      const indicator = document.getElementById('indicatorRight');
+      if (txt) txt.textContent = `+${rightAccum} segundos`;
+      if (indicator) {
+        indicator.classList.remove('active');
+        void indicator.offsetWidth; // Reflow for animation restart
+        indicator.classList.add('active');
+      }
+
+      this.seekRelativo(15);
+
+      clearTimeout(rightTimer);
+      rightTimer = setTimeout(() => {
+        if (indicator) indicator.classList.remove('active');
+        rightAccum = 0;
+      }, 700);
+    };
+
+    if (zoneRight) {
+      // Doble clic ratón (PC/Mac)
+      zoneRight.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        ejecutarAdelantar();
+      });
+
+      // Doble toque móvil (Android / iOS)
+      zoneRight.addEventListener('touchend', (e) => {
+        const ahora = Date.now();
+        const intervalo = ahora - lastTapRight;
+        if (intervalo > 0 && intervalo < 350) {
+          e.preventDefault();
+          e.stopPropagation();
+          ejecutarAdelantar();
+          lastTapRight = 0;
+        } else {
+          lastTapRight = ahora;
+        }
+      });
+    }
+
+    let leftAccum = 0;
+    let leftTimer = null;
+    let lastTapLeft = 0;
+
+    const ejecutarRetroceder = () => {
+      leftAccum += 15;
+      const txt = document.getElementById('txtSeekLeft');
+      const indicator = document.getElementById('indicatorLeft');
+      if (txt) txt.textContent = `-${leftAccum} segundos`;
+      if (indicator) {
+        indicator.classList.remove('active');
+        void indicator.offsetWidth;
+        indicator.classList.add('active');
+      }
+
+      this.seekRelativo(-15);
+
+      clearTimeout(leftTimer);
+      leftTimer = setTimeout(() => {
+        if (indicator) indicator.classList.remove('active');
+        leftAccum = 0;
+      }, 700);
+    };
+
+    if (zoneLeft) {
+      // Doble clic ratón (PC/Mac)
+      zoneLeft.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        ejecutarRetroceder();
+      });
+
+      // Doble toque móvil (Android / iOS)
+      zoneLeft.addEventListener('touchend', (e) => {
+        const ahora = Date.now();
+        const intervalo = ahora - lastTapLeft;
+        if (intervalo > 0 && intervalo < 350) {
+          e.preventDefault();
+          e.stopPropagation();
+          ejecutarRetroceder();
+          lastTapLeft = 0;
+        } else {
+          lastTapLeft = ahora;
+        }
+      });
+    }
+
+    if (zoneCenter) {
+      zoneCenter.addEventListener('click', () => {
+        this.togglePlayPause();
+      });
+    }
+
+    // Configurar atajos de teclado globales (ArrowRight, ArrowLeft, L, J, Space, K)
+    if (!this.keyboardListenerAttached) {
+      this.keyboardListenerAttached = true;
+      document.addEventListener('keydown', (e) => {
+        // Ignorar si el usuario está escribiendo en el buscador
+        const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+        if (activeTag === 'input' || activeTag === 'textarea') return;
+        if (!this.currentVideo) return;
+
+        if (e.key === 'ArrowRight' || e.key === 'l' || e.key === 'L') {
+          e.preventDefault();
+          ejecutarAdelantar();
+        } else if (e.key === 'ArrowLeft' || e.key === 'j' || e.key === 'J') {
+          e.preventDefault();
+          ejecutarRetroceder();
+        } else if (e.key === ' ' || e.key === 'k' || e.key === 'K') {
+          e.preventDefault();
+          this.togglePlayPause();
+        }
+      });
+    }
+  }
+
+  /**
+   * Salto relativo de tiempo hacia adelante o atrás.
+   * @param {number} segundos - Positivo para adelantar, negativo para retroceder
+   */
+  seekRelativo(segundos) {
+    const tiempoBase = typeof this.currentTime === 'number' ? this.currentTime : 0;
+    const nuevoTiempo = Math.max(0, tiempoBase + segundos);
+    this.currentTime = nuevoTiempo;
+
+    this._enviarComando('seekTo', [nuevoTiempo, true]);
+  }
+
+  togglePlayPause() {
+    if (this.isPlaying) {
+      this._enviarComando('pauseVideo');
+      this.isPlaying = false;
+    } else {
+      this._enviarComando('playVideo');
+      this.isPlaying = true;
+    }
+  }
+
+  _enviarComando(func, args = []) {
+    if (this.iframe && this.iframe.contentWindow) {
+      this.iframe.contentWindow.postMessage(JSON.stringify({
+        event: 'command',
+        func: func,
+        args: args
+      }), '*');
+    }
   }
 
   /**
@@ -168,7 +407,6 @@ export class VideoPlayer {
   }
 
   _enlazarEventosDetalles(video) {
-    // Like button toggle
     const btnLike = document.getElementById('btnActionLike');
     const txtLike = document.getElementById('txtLikeCount');
     if (btnLike && txtLike) {
@@ -181,7 +419,6 @@ export class VideoPlayer {
       });
     }
 
-    // Subscribe toggle
     const btnSub = document.getElementById('btnSubscribeChannel');
     if (btnSub) {
       btnSub.addEventListener('click', () => {
@@ -190,7 +427,6 @@ export class VideoPlayer {
       });
     }
 
-    // Transmitir a TV
     const btnCast = document.getElementById('btnActionCastTV');
     if (btnCast) {
       btnCast.addEventListener('click', () => {
@@ -198,13 +434,11 @@ export class VideoPlayer {
       });
     }
 
-    // Compartir video
     const btnShare = document.getElementById('btnActionCompartir');
     if (btnShare) {
       btnShare.addEventListener('click', () => this._compartirVideo(video));
     }
 
-    // Guardar en biblioteca
     const btnGuardar = document.getElementById('btnActionGuardar');
     if (btnGuardar && this.onFavoriteToggleCallback) {
       btnGuardar.addEventListener('click', () => {
@@ -213,7 +447,6 @@ export class VideoPlayer {
       });
     }
 
-    // Botón volver / cerrar
     const btnVolver = document.getElementById('btnActionVolverFeed');
     if (btnVolver) {
       btnVolver.addEventListener('click', () => this.cerrar());

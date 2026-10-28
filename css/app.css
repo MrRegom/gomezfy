@@ -764,6 +764,141 @@ body.yt-theme-dark {
   border: none;
 }
 
+/* ==========================================================================
+   Capa de Gestos: Doble Clic / Doble Toque (+/- 15s estilo YouTube)
+   ========================================================================== */
+.yt-doubletap-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 52px; /* Deja libre la barra de controles inferior de YouTube para timeline, volumen y pantalla completa */
+  display: flex;
+  pointer-events: auto;
+  z-index: 10;
+}
+
+.yt-tap-zone {
+  position: relative;
+  height: 100%;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.yt-tap-zone.zone-left {
+  width: 40%;
+}
+
+.yt-tap-zone.zone-center {
+  width: 20%;
+  background: transparent;
+}
+
+.yt-tap-zone.zone-right {
+  width: 40%;
+}
+
+/* Indicador y Ondas de Salto */
+.yt-seek-indicator {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease-out;
+}
+
+.yt-seek-indicator.active {
+  opacity: 1;
+}
+
+/* Arcos de Luz Semicirculares de YouTube */
+.yt-seek-ripple-arc {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+  opacity: 0;
+  transform: scale(0.85);
+  transition: transform 0.35s cubic-bezier(0.1, 0.9, 0.2, 1), opacity 0.35s ease;
+}
+
+.yt-seek-indicator.active .yt-seek-ripple-arc {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.arc-left {
+  left: 0;
+  border-radius: 0 100% 100% 0;
+  background: radial-gradient(ellipse at left, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.08) 65%, transparent 100%);
+}
+
+.arc-right {
+  right: 0;
+  border-radius: 100% 0 0 100%;
+  background: radial-gradient(ellipse at right, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.08) 65%, transparent 100%);
+}
+
+/* Contenido Central del Badge (Flechas + Texto) */
+.yt-seek-badge-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background-color: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 10px 18px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  transform: scale(0.9);
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.yt-seek-indicator.active .yt-seek-badge-content {
+  transform: scale(1);
+}
+
+.yt-seek-triangles {
+  display: flex;
+  gap: 3px;
+  font-size: 1.15rem;
+  color: #ffffff;
+  letter-spacing: -1px;
+}
+
+.yt-seek-indicator.active .yt-seek-triangles span:nth-child(1) {
+  animation: ytArrowPulse 0.4s ease infinite alternate;
+}
+.yt-seek-indicator.active .yt-seek-triangles span:nth-child(2) {
+  animation: ytArrowPulse 0.4s ease 0.1s infinite alternate;
+}
+.yt-seek-indicator.active .yt-seek-triangles span:nth-child(3) {
+  animation: ytArrowPulse 0.4s ease 0.2s infinite alternate;
+}
+
+@keyframes ytArrowPulse {
+  from { opacity: 0.3; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1.1); }
+}
+
+.yt-seek-text {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
 .watch-video-title {
   font-size: 1.28rem;
   font-weight: 700;
